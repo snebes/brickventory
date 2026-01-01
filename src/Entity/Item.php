@@ -26,6 +26,11 @@ class Item
     #[ORM\Column(type: 'text')]
     public string $itemName = '';
 
+    #[ORM\ManyToOne(targetEntity: ItemCategory::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Validate\NotNull]
+    public ItemCategory $category;
+
     #[ORM\Column(type: 'integer')]
     public int $quantityAvailable = 0;
 
@@ -37,6 +42,15 @@ class Item
 
     #[ORM\Column(type: 'integer')]
     public int $quantityBackOrdered = 0;
+
+    #[ORM\Column(type: 'string')]
+    public string $elementIds = '';
+
+    #[ORM\Column(type: 'string')]
+    public string $partId = '';
+
+    #[ORM\Column(type: 'string', length: 5)]
+    public string $colorId = '';
 
     public function __construct()
     {
