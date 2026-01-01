@@ -35,6 +35,9 @@ class PurchaseOrder
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $notes = null;
 
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    public ?string $reference = null;
+
     /**
      * @var Collection<int, PurchaseOrderLine>
      */

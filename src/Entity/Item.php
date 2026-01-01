@@ -33,9 +33,6 @@ class Item
     public int $quantityOnHand = 0;
 
     #[ORM\Column(type: 'integer')]
-    public int $quantityAvailable = 0;
-
-    #[ORM\Column(type: 'integer')]
     public int $quantityOnOrder = 0;
 
     #[ORM\Column(type: 'integer')]
