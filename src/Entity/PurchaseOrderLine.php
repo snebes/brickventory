@@ -36,6 +36,9 @@ class PurchaseOrderLine
     #[ORM\Column(type: 'integer')]
     public int $quantityReceived = 0;
 
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    public float $rate = 0.0;
+
     public function __construct()
     {
         $this->uuid = Ulid::generate();
