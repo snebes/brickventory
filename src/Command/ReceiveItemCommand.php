@@ -37,21 +37,20 @@ class ReceiveItemCommand extends Command
 
         $io->section('Receive Items from Purchase Order');
 
-        // Ask for purchase order ID
-        $poQuestion = new Question('Enter Purchase Order ID: ');
-        $purchaseOrderId = $helper->ask($input, $output, $poQuestion);
+        // Ask for purchase order ID or reference
+        $poQuestion = new Question('Enter Purchase Order ID or Reference: ');
+        $purchaseOrderIdentifier = $helper->ask($input, $output, $poQuestion);
 
-        if (empty($purchaseOrderId) || !is_numeric($purchaseOrderId)) {
-            $io->error('Invalid Purchase Order ID');
+        if (empty($purchaseOrderIdentifier)) {
+            $io->error('Purchase Order ID or Reference is required');
             return Command::FAILURE;
         }
 
-        // Find the purchase order
-        $purchaseOrder = $this->entityManager->getRepository(PurchaseOrder::class)
-            ->findOneBy(['id' => (int)$purchaseOrderId]);
+        // Find the purchase order by ID or reference
+        $purchaseOrder = $this->findPurchaseOrderByIdentifier($purchaseOrderIdentifier);
 
         if (!$purchaseOrder) {
-            $io->error("Purchase Order with ID {$purchaseOrderId} not found");
+            $io->error("Purchase Order with identifier '{$purchaseOrderIdentifier}' not found");
             return Command::FAILURE;
         }
 
@@ -150,5 +149,25 @@ class ReceiveItemCommand extends Command
         $io->success('Items received successfully!');
         
         return Command::SUCCESS;
+    }
+
+    /**
+     * Find a purchase order by ID or reference number
+     */
+    private function findPurchaseOrderByIdentifier(string $identifier): ?PurchaseOrder
+    {
+        // Try to find by ID if the identifier is numeric
+        if (is_numeric($identifier)) {
+            $purchaseOrder = $this->entityManager->getRepository(PurchaseOrder::class)
+                ->findOneBy(['id' => (int)$identifier]);
+            
+            if ($purchaseOrder) {
+                return $purchaseOrder;
+            }
+        }
+
+        // Try to find by reference number
+        return $this->entityManager->getRepository(PurchaseOrder::class)
+            ->findOneBy(['reference' => $identifier]);
     }
 }
