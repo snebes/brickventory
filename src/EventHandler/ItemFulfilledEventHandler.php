@@ -43,14 +43,12 @@ class ItemFulfilledEventHandler
         // quantityOnHand decreases when items are fulfilled
         $item->quantityOnHand -= $quantity;
         
-        // quantityBackOrdered decreases when items are fulfilled
-        if ($item->quantityBackOrdered > 0) {
-            $backOrderedToFulfill = min($quantity, $item->quantityBackOrdered);
-            $item->quantityBackOrdered -= $backOrderedToFulfill;
-        }
+        // quantityCommitted decreases when items are fulfilled (order is being shipped)
+        $item->quantityCommitted -= $quantity;
         
         // Recalculate quantityAvailable
-        $item->quantityAvailable = $item->quantityOnHand + $item->quantityOnOrder - $item->quantityBackOrdered;
+        // quantityAvailable = quantityOnHand - quantityCommitted
+        $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
 
         $this->entityManager->persist($item);
         $this->entityManager->flush();
