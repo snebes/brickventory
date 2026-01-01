@@ -60,6 +60,36 @@ class CreatePurchaseOrderCommandTest extends TestCase
         $this->assertSame($item, $result);
     }
 
+    public function testFindItemByDatabaseId(): void
+    {
+        // Arrange - test backward compatibility with database ID
+        $category = new ItemCategory();
+        $category->name = 'Test Category';
+
+        $item = new Item();
+        $item->itemId = 'ITEM-001';
+        $item->itemName = 'Test Item';
+        $item->category = $category;
+        $item->elementIds = 'SKU-001,SKU-002';
+
+        $repository = $this->createMock(EntityRepository::class);
+        $repository->expects($this->once())
+            ->method('findOneBy')
+            ->with(['id' => 123])
+            ->willReturn($item);
+
+        $this->entityManager->expects($this->once())
+            ->method('getRepository')
+            ->with(Item::class)
+            ->willReturn($repository);
+
+        // Act
+        $result = $this->invokePrivateMethod($this->command, 'findItemByIdentifier', ['123']);
+
+        // Assert
+        $this->assertSame($item, $result);
+    }
+
     public function testFindItemByElementId(): void
     {
         // Arrange
@@ -107,7 +137,7 @@ class CreatePurchaseOrderCommandTest extends TestCase
             ->with(Item::class)
             ->willReturn($repository);
 
-        // Act
+        // Act - using non-numeric identifier so it skips database ID lookup
         $result = $this->invokePrivateMethod($this->command, 'findItemByIdentifier', ['SKU-002']);
 
         // Assert

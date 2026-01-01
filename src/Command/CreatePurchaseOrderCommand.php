@@ -139,11 +139,19 @@ class CreatePurchaseOrderCommand extends Command
     }
 
     /**
-     * Find an item by itemId or a SKU in the elementIds field
+     * Find an item by database ID, itemId, or a SKU in the elementIds field
      */
     private function findItemByIdentifier(string $identifier): ?Item
     {
-        // First, try to find by itemId
+        // First, try to find by database ID if the identifier is numeric (backward compatibility)
+        if (is_numeric($identifier)) {
+            $item = $this->entityManager->getRepository(Item::class)->findOneBy(['id' => (int)$identifier]);
+            if ($item) {
+                return $item;
+            }
+        }
+
+        // Next, try to find by itemId
         $item = $this->entityManager->getRepository(Item::class)->findOneBy(['itemId' => $identifier]);
         
         if ($item) {
