@@ -22,8 +22,8 @@ php bin/console app:purchase-order:create
 The command will prompt you for:
 
 1. **Purchase Order Reference**: A free-form text field for your reference
-2. **Line Items**: Enter items in the format `id quantity rate` (space-separated)
-   - `id`: The Item ID from the database
+2. **Line Items**: Enter items in the format `itemId/SKU quantity rate` (space-separated)
+   - `itemId/SKU`: The Item ID (itemId field), database ID (for backward compatibility), or a SKU from the elementIds field
    - `quantity`: Integer quantity being ordered
    - `rate`: Decimal price per unit
 
@@ -37,13 +37,14 @@ Create Purchase Order
 
 Enter purchase order reference: Vendor ABC - Order 2024-001
 
-Enter line items in format: id quantity rate
+Enter line items in format: itemId/SKU quantity rate
+(itemId/SKU can be either the item ID or a SKU from elementIds)
 Press Enter on a blank line to finish
 
-Line 1: 1 100 5.99
+Line 1: ITEM-001 100 5.99
 ✔ Added: LEGO Brick 2x4 (Qty: 100, Rate: 5.99)
 
-Line 2: 2 50 12.50
+Line 2: SKU-789 50 12.50
 ✔ Added: LEGO Plate 8x8 (Qty: 50, Rate: 12.50)
 
 Line 3: 
@@ -150,7 +151,7 @@ To test the complete flow:
 5. Verify the Item `quantityOnOrder` and `quantityAvailable` fields were updated
 6. Verify events were recorded in the `item_event` table
 7. **Receive items**: `php bin/console app:item:receive`
-8. Enter the purchase order ID and receive quantities
+8. Enter the purchase order ID or reference number, and receive quantities
 9. Verify the Item `quantityOnHand` was updated and `quantityOnOrder` decreased
 10. Verify `item_received` events were recorded in the `item_event` table
 
@@ -169,7 +170,11 @@ php bin/console app:item:fulfill
 
 Potential improvements:
 - Add validation for duplicate item IDs in the same order
-- Support for item lookup by itemId instead of database ID
 - Batch import from CSV
 - Confirmation step before saving
 - Receipt generation upon purchase order completion
+
+## Recent Improvements
+
+- ✅ Support for item lookup by itemId, database ID, and SKU from elementIds field
+- ✅ Support for purchase order lookup by reference number during receipt process
