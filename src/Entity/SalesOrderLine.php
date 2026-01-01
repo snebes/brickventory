@@ -9,7 +9,7 @@ use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 #[ORM\Entity]
-class Item
+class SalesOrderLine
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -19,27 +19,22 @@ class Item
     #[ORM\Column(type: 'string', length: 36, unique: true)]
     public private(set) string $uuid = '';
 
-    #[ORM\Column(type: 'string', length: 55, unique: true)]
-    #[Validate\NotBlank]
-    public string $itemId = '';
+    #[ORM\ManyToOne(targetEntity: SalesOrder::class, inversedBy: 'lines')]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Validate\NotNull]
+    public SalesOrder $salesOrder;
 
-    #[ORM\Column(type: 'text')]
-    public string $itemName = '';
-
-    #[ORM\Column(type: 'integer')]
-    public int $quantityAvailable = 0;
-
-    #[ORM\Column(type: 'integer')]
-    public int $quantityOnHand = 0;
+    #[ORM\ManyToOne(targetEntity: Item::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Validate\NotNull]
+    public Item $item;
 
     #[ORM\Column(type: 'integer')]
-    public int $quantityAvailable = 0;
+    #[Validate\GreaterThan(0)]
+    public int $quantityOrdered = 0;
 
     #[ORM\Column(type: 'integer')]
-    public int $quantityOnOrder = 0;
-
-    #[ORM\Column(type: 'integer')]
-    public int $quantityBackOrdered = 0;
+    public int $quantityFulfilled = 0;
 
     public function __construct()
     {
