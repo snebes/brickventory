@@ -89,7 +89,7 @@ Created `src/EventHandler/PurchaseOrderCreatedEventHandler.php`:
 - Listens for `PurchaseOrderCreatedEvent`
 - Updates Item inventory fields:
   - `quantityOnOrder` is incremented by the ordered quantity
-  - `quantityAvailable` is recalculated as: `quantityOnHand + quantityOnOrder - quantityBackOrdered`
+  - **Note:** `quantityAvailable` is NOT updated when a purchase order is created. It will only be updated when items are actually received.
 
 ### 4. Database Migration
 
@@ -163,6 +163,7 @@ php bin/console app:item:fulfill
 ## Related Commands
 
 - `app:purchase-order:create` - Create a new purchase order
+- `app:sales-order:create` - Create a new sales order (see [EVENT_SOURCING.md](EVENT_SOURCING.md))
 - `app:item:receive` - Receive items from a purchase order (see [EVENT_SOURCING.md](EVENT_SOURCING.md))
 - `app:item:fulfill` - Fulfill items for a sales order (see [EVENT_SOURCING.md](EVENT_SOURCING.md))
 
@@ -178,3 +179,8 @@ Potential improvements:
 
 - ✅ Support for item lookup by itemId, database ID, and SKU from elementIds field
 - ✅ Support for purchase order lookup by reference number during receipt process
+- ✅ Fixed blank line handling in purchase order command (null vs empty string)
+- ✅ Added quantityCommitted field to track items committed to sales orders
+- ✅ Updated quantityAvailable calculation: quantityOnHand - quantityCommitted
+- ✅ Purchase orders no longer update quantityAvailable until items are received
+- ✅ Added complete sales order creation workflow
