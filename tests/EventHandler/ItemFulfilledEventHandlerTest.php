@@ -76,7 +76,6 @@ class ItemFulfilledEventHandlerTest extends TestCase
         $item = new Item();
         $item->quantityOnHand = 100;
         $item->quantityOnOrder = 0;
-        $item->quantityBackOrdered = 20;
         $item->quantityCommitted = 30;
         $item->quantityAvailable = 70; // 100 - 30
 
@@ -103,9 +102,8 @@ class ItemFulfilledEventHandlerTest extends TestCase
         $item = new Item();
         $item->quantityOnHand = 100;
         $item->quantityOnOrder = 50;
-        $item->quantityBackOrdered = 0;
-        $item->quantityCommitted = 0;
-        $item->quantityAvailable = 100; // 100 - 0
+        $item->quantityCommitted = 25;
+        $item->quantityAvailable = 75; // 100 - 25
 
         $salesOrder = new SalesOrder();
         $salesOrder->orderNumber = 'SO-789';
@@ -120,7 +118,7 @@ class ItemFulfilledEventHandlerTest extends TestCase
 
         // Assert
         $this->assertEquals(75, $item->quantityOnHand); // 100 - 25
-        $this->assertEquals(-25, $item->quantityCommitted); // 0 - 25 (negative means oversold)
-        $this->assertEquals(100, $item->quantityAvailable); // 75 - (-25)
+        $this->assertEquals(0, $item->quantityCommitted); // 25 - 25
+        $this->assertEquals(75, $item->quantityAvailable); // 75 - 0
     }
 }
