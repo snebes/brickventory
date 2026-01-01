@@ -2,6 +2,12 @@
 
 This document describes the new Purchase Order creation command and its implementation.
 
+## Requirements
+
+- **PHP 8.4+** (required)
+- Symfony 8.0
+- PostgreSQL (or compatible database)
+
 ## Overview
 
 A Symfony console command has been created to allow users to create purchase orders interactively from the command line. The implementation follows the CQRS (Command Query Responsibility Segregation) design pattern to handle inventory updates.
@@ -92,8 +98,9 @@ Created `migrations/Version20260101221000.php`:
 
 ## Running the Migration
 
-After ensuring dependencies are installed, run:
+Ensure you have PHP 8.4+ installed, then install dependencies and run the migration:
 ```bash
+composer install
 php bin/console doctrine:migrations:migrate
 ```
 
