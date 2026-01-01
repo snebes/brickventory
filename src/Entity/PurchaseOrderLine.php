@@ -12,6 +12,7 @@ use Symfony\Component\Validator\Constraints as Validate;
 class PurchaseOrderLine
 {
     #[ORM\Id]
+    #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
     public int $id;
 

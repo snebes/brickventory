@@ -12,6 +12,7 @@ use Symfony\Component\Validator\Constraints as Validate;
 class ItemReceipt
 {
     #[ORM\Id]
+    #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
     public int $id;
 
