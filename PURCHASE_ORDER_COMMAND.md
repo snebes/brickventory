@@ -106,20 +106,30 @@ php bin/console doctrine:migrations:migrate
 
 ## Architecture Notes
 
-### CQRS Pattern
-The implementation uses the CQRS pattern to separate the command (creating purchase order) from the side effects (updating inventory). This provides:
+### CQRS and Event Sourcing Patterns
+The implementation uses both CQRS and Event Sourcing patterns:
 
+**CQRS (Command Query Responsibility Segregation)**:
 1. **Separation of Concerns**: Command creation and inventory updates are decoupled
 2. **Extensibility**: Easy to add more event handlers for other side effects
 3. **Maintainability**: Clear flow of data and events
+
+**Event Sourcing**:
+1. **Event Store**: All inventory changes are recorded as immutable events in the `item_event` table
+2. **Audit Trail**: Complete history of all inventory changes
+3. **State Reconstruction**: Current inventory state can be derived from event history
+4. **Traceability**: Every change is linked to its source (purchase order, sales order, etc.)
+
+See [EVENT_SOURCING.md](EVENT_SOURCING.md) for detailed documentation on the event sourcing implementation.
 
 ### Event Flow
 1. User runs command and enters data
 2. Command creates PurchaseOrder entity and persists it
 3. Command dispatches `PurchaseOrderCreatedEvent`
 4. `PurchaseOrderCreatedEventHandler` receives event
-5. Handler updates Item inventory fields
-6. Changes are persisted to database
+5. Handler creates `purchase_order_created` event in the event store
+6. Handler updates Item inventory fields (`quantityOnOrder`, `quantityAvailable`)
+7. Changes are persisted to database
 
 ### Auto-Configuration
 Symfony's auto-configuration handles:
@@ -131,13 +141,29 @@ No additional configuration is needed beyond the code.
 
 ## Testing
 
-To test the command:
+To test the complete flow:
 
 1. Ensure you have items in the database with valid IDs
-2. Run the command: `php bin/console app:purchase-order:create`
-3. Follow the prompts
+2. **Create a purchase order**: `php bin/console app:purchase-order:create`
+3. Follow the prompts to create a purchase order with line items
 4. Verify the purchase order was created in the database
-5. Verify the Item `quantityOnOrder` and `quantityAvailable` fields were updated correctly
+5. Verify the Item `quantityOnOrder` and `quantityAvailable` fields were updated
+6. Verify events were recorded in the `item_event` table
+7. **Receive items**: `php bin/console app:item:receive`
+8. Enter the purchase order ID and receive quantities
+9. Verify the Item `quantityOnHand` was updated and `quantityOnOrder` decreased
+10. Verify `item_received` events were recorded in the `item_event` table
+
+For sales order fulfillment, use:
+```bash
+php bin/console app:item:fulfill
+```
+
+## Related Commands
+
+- `app:purchase-order:create` - Create a new purchase order
+- `app:item:receive` - Receive items from a purchase order (see [EVENT_SOURCING.md](EVENT_SOURCING.md))
+- `app:item:fulfill` - Fulfill items for a sales order (see [EVENT_SOURCING.md](EVENT_SOURCING.md))
 
 ## Future Enhancements
 
