@@ -30,6 +30,7 @@ class ItemFulfilledEventHandlerTest extends TestCase
         $item->quantityOnHand = 100;
         $item->quantityOnOrder = 0;
         $item->quantityBackOrdered = 0;
+        $item->quantityCommitted = 50;
 
         $salesOrder = new SalesOrder();
         $salesOrder->orderNumber = 'SO-123';
@@ -62,19 +63,21 @@ class ItemFulfilledEventHandlerTest extends TestCase
         $this->assertEquals('sales_order', $itemEvent->referenceType);
         
         // Check Item was persisted with updated quantities
+        // quantityAvailable = quantityOnHand - quantityCommitted
         $this->assertEquals($item, $persistedEntities[1]);
         $this->assertEquals(50, $item->quantityOnHand); // 100 - 50
-        $this->assertEquals(50, $item->quantityAvailable);
+        $this->assertEquals(0, $item->quantityCommitted); // 50 - 50
+        $this->assertEquals(50, $item->quantityAvailable); // 50 - 0
     }
 
-    public function testItemFulfilledEventReducesBackOrderedQuantity(): void
+    public function testItemFulfilledEventWithCommittedQuantity(): void
     {
         // Arrange
         $item = new Item();
         $item->quantityOnHand = 100;
         $item->quantityOnOrder = 0;
-        $item->quantityBackOrdered = 20;
-        $item->quantityAvailable = 80; // 100 + 0 - 20
+        $item->quantityCommitted = 30;
+        $item->quantityAvailable = 70; // 100 - 30
 
         $salesOrder = new SalesOrder();
         $salesOrder->orderNumber = 'SO-456';
@@ -88,19 +91,19 @@ class ItemFulfilledEventHandlerTest extends TestCase
         ($this->handler)($event);
 
         // Assert
-        $this->assertEquals(70, $item->quantityOnHand); // 100 - 30 (total fulfilled)
-        $this->assertEquals(0, $item->quantityBackOrdered); // 20 - min(30, 20) = 0 (back orders fully satisfied)
-        $this->assertEquals(70, $item->quantityAvailable); // 70 + 0 - 0
+        $this->assertEquals(70, $item->quantityOnHand); // 100 - 30
+        $this->assertEquals(0, $item->quantityCommitted); // 30 - 30
+        $this->assertEquals(70, $item->quantityAvailable); // 70 - 0
     }
 
-    public function testItemFulfilledEventWithNoBackOrders(): void
+    public function testItemFulfilledEventWithNoCommitted(): void
     {
         // Arrange
         $item = new Item();
         $item->quantityOnHand = 100;
         $item->quantityOnOrder = 50;
-        $item->quantityBackOrdered = 0;
-        $item->quantityAvailable = 150;
+        $item->quantityCommitted = 25;
+        $item->quantityAvailable = 75; // 100 - 25
 
         $salesOrder = new SalesOrder();
         $salesOrder->orderNumber = 'SO-789';
@@ -115,7 +118,7 @@ class ItemFulfilledEventHandlerTest extends TestCase
 
         // Assert
         $this->assertEquals(75, $item->quantityOnHand); // 100 - 25
-        $this->assertEquals(0, $item->quantityBackOrdered); // unchanged
-        $this->assertEquals(125, $item->quantityAvailable); // 75 + 50 - 0
+        $this->assertEquals(0, $item->quantityCommitted); // 25 - 25
+        $this->assertEquals(75, $item->quantityAvailable); // 75 - 0
     }
 }

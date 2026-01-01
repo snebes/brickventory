@@ -32,13 +32,15 @@ class PurchaseOrderCreatedEventHandlerTest extends TestCase
         $item1->quantityOnHand = 10;
         $item1->quantityOnOrder = 0;
         $item1->quantityBackOrdered = 0;
+        $item1->quantityCommitted = 0;
         $item1->quantityAvailable = 10;
 
         $item2 = new Item();
         $item2->quantityOnHand = 20;
         $item2->quantityOnOrder = 0;
         $item2->quantityBackOrdered = 5;
-        $item2->quantityAvailable = 15;
+        $item2->quantityCommitted = 0;
+        $item2->quantityAvailable = 20;
 
         $line1 = new PurchaseOrderLine();
         $line1->item = $item1;
@@ -81,9 +83,10 @@ class PurchaseOrderCreatedEventHandlerTest extends TestCase
         $this->assertEquals('purchase_order', $itemEvent1->referenceType);
         
         // Check first Item was updated
+        // quantityAvailable should NOT be updated when purchase order is created
         $this->assertEquals($item1, $persistedEntities[1]);
         $this->assertEquals(50, $item1->quantityOnOrder);
-        $this->assertEquals(60, $item1->quantityAvailable); // 10 + 50 - 0
+        $this->assertEquals(10, $item1->quantityAvailable); // unchanged until items are received
         
         // Check second ItemEvent
         $itemEvent2 = $persistedEntities[2];
@@ -93,6 +96,6 @@ class PurchaseOrderCreatedEventHandlerTest extends TestCase
         // Check second Item was updated
         $this->assertEquals($item2, $persistedEntities[3]);
         $this->assertEquals(30, $item2->quantityOnOrder);
-        $this->assertEquals(45, $item2->quantityAvailable); // 20 + 30 - 5
+        $this->assertEquals(20, $item2->quantityAvailable); // unchanged until items are received
     }
 }

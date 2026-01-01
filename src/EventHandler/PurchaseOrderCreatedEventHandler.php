@@ -42,9 +42,8 @@ class PurchaseOrderCreatedEventHandler
             // Update quantityOnOrder when a purchase order is created
             $item->quantityOnOrder += $line->quantityOrdered;
             
-            // Update quantityAvailable (this is the quantity that can be sold)
-            // quantityAvailable = quantityOnHand + quantityOnOrder - quantityBackOrdered
-            $item->quantityAvailable = $item->quantityOnHand + $item->quantityOnOrder - $item->quantityBackOrdered;
+            // Note: quantityAvailable is NOT updated here because items are not yet received
+            // quantityAvailable will be updated when items are actually received
             
             $this->entityManager->persist($item);
         }

@@ -48,7 +48,8 @@ class ItemReceivedEventHandler
         $item->quantityOnOrder -= $quantity;
         
         // Recalculate quantityAvailable
-        $item->quantityAvailable = $item->quantityOnHand + $item->quantityOnOrder - $item->quantityBackOrdered;
+        // quantityAvailable = quantityOnHand - quantityCommitted
+        $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
 
         $this->entityManager->persist($item);
         $this->entityManager->flush();

@@ -43,6 +43,9 @@ class Item
     #[ORM\Column(type: 'integer')]
     public int $quantityBackOrdered = 0;
 
+    #[ORM\Column(type: 'integer')]
+    public int $quantityCommitted = 0;
+
     #[ORM\Column(type: 'string')]
     public string $elementIds = '';
 

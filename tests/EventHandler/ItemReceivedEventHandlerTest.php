@@ -30,6 +30,7 @@ class ItemReceivedEventHandlerTest extends TestCase
         $item->quantityOnHand = 0;
         $item->quantityOnOrder = 100;
         $item->quantityBackOrdered = 0;
+        $item->quantityCommitted = 0;
 
         $purchaseOrder = new PurchaseOrder();
         $purchaseOrder->orderNumber = 'PO-123';
@@ -63,10 +64,11 @@ class ItemReceivedEventHandlerTest extends TestCase
         $this->assertEquals('purchase_order', $itemEvent->referenceType);
         
         // Check Item was persisted with updated quantities
+        // quantityAvailable = quantityOnHand - quantityCommitted
         $this->assertEquals($item, $persistedEntities[1]);
         $this->assertEquals(50, $item->quantityOnHand);
         $this->assertEquals(50, $item->quantityOnOrder);
-        $this->assertEquals(50, $item->quantityAvailable);
+        $this->assertEquals(50, $item->quantityAvailable); // 50 - 0
     }
 
     public function testItemReceivedEventUpdatesInventoryCorrectly(): void
@@ -76,7 +78,8 @@ class ItemReceivedEventHandlerTest extends TestCase
         $item->quantityOnHand = 20;
         $item->quantityOnOrder = 100;
         $item->quantityBackOrdered = 10;
-        $item->quantityAvailable = 110; // 20 + 100 - 10
+        $item->quantityCommitted = 5;
+        $item->quantityAvailable = 15; // 20 - 5
 
         $purchaseOrder = new PurchaseOrder();
         $purchaseOrder->orderNumber = 'PO-456';
@@ -93,6 +96,7 @@ class ItemReceivedEventHandlerTest extends TestCase
         $this->assertEquals(50, $item->quantityOnHand); // 20 + 30
         $this->assertEquals(70, $item->quantityOnOrder); // 100 - 30
         $this->assertEquals(10, $item->quantityBackOrdered); // unchanged
-        $this->assertEquals(110, $item->quantityAvailable); // 50 + 70 - 10
+        $this->assertEquals(5, $item->quantityCommitted); // unchanged
+        $this->assertEquals(45, $item->quantityAvailable); // 50 - 5
     }
 }

@@ -43,15 +43,30 @@ The system tracks the following event types:
 
 1. **purchase_order_created**: When a purchase order is created, increases `quantityOnOrder`
 2. **item_received**: When items are received from a purchase order, increases `quantityOnHand` and decreases `quantityOnOrder`
-3. **item_fulfilled**: When items are fulfilled for a sales order, decreases `quantityOnHand`
+3. **sales_order_created**: When a sales order is created, increases `quantityCommitted` and decreases `quantityAvailable`
+4. **item_fulfilled**: When items are fulfilled for a sales order, decreases `quantityOnHand` and `quantityCommitted`
 
 ### Domain Events
+
+#### PurchaseOrderCreatedEvent
+Dispatched when a purchase order is created.
+
+```php
+new PurchaseOrderCreatedEvent($purchaseOrder)
+```
 
 #### ItemReceivedEvent
 Dispatched when items are physically received from a supplier.
 
 ```php
 new ItemReceivedEvent($item, $quantity, $purchaseOrder)
+```
+
+#### SalesOrderCreatedEvent
+Dispatched when a sales order is created.
+
+```php
+new SalesOrderCreatedEvent($salesOrder)
 ```
 
 #### ItemFulfilledEvent
@@ -66,21 +81,81 @@ new ItemFulfilledEvent($item, $quantity, $salesOrder)
 #### PurchaseOrderCreatedEventHandler
 - Creates `purchase_order_created` events in the event store
 - Updates `quantityOnOrder` to reflect items on order
-- Recalculates `quantityAvailable`
+- **Note:** Does NOT update `quantityAvailable` (only updated when items are received)
 
 #### ItemReceivedEventHandler
 - Creates `item_received` events in the event store
 - Increases `quantityOnHand` (items are now in the warehouse)
 - Decreases `quantityOnOrder` (items are no longer on order)
-- Recalculates `quantityAvailable`
+- Recalculates `quantityAvailable` as: `quantityOnHand - quantityCommitted`
+
+#### SalesOrderCreatedEventHandler
+- Creates `sales_order_created` events in the event store
+- Increases `quantityCommitted` (items committed to sales orders)
+- Recalculates `quantityAvailable` as: `quantityOnHand - quantityCommitted`
 
 #### ItemFulfilledEventHandler
 - Creates `item_fulfilled` events in the event store
 - Decreases `quantityOnHand` (items have left the warehouse)
-- Decreases `quantityBackOrdered` if applicable
-- Recalculates `quantityAvailable`
+- Decreases `quantityCommitted` (order has been fulfilled)
+- Recalculates `quantityAvailable` as: `quantityOnHand - quantityCommitted`
+
+## Inventory Calculation Changes
+
+### New Field: quantityCommitted
+A new field `quantityCommitted` has been added to track the quantity of items committed to unfulfilled sales orders.
+
+### Updated quantityAvailable Calculation
+The `quantityAvailable` field now represents the actual quantity available for sale:
+
+**New formula:** `quantityAvailable = quantityOnHand - quantityCommitted`
+
+**Key changes:**
+- `quantityAvailable` is NOT increased when a purchase order is created
+- `quantityAvailable` is ONLY updated when items are received into inventory
+- `quantityAvailable` decreases when a sales order is created (items are committed)
+- `quantityAvailable` is recalculated when items are fulfilled
+
+This ensures that `quantityAvailable` accurately reflects the actual physical inventory available for new orders, not including items that are on order but not yet received.
 
 ## Usage
+
+### Creating a Sales Order
+
+```bash
+php bin/console app:sales-order:create
+```
+
+This command:
+1. Creates a sales order with line items
+2. Dispatches `SalesOrderCreatedEvent`
+3. Creates `sales_order_created` events in the event store
+4. Updates `quantityCommitted` for each item
+5. Recalculates `quantityAvailable`
+
+Example:
+```
+Create Sales Order
+==================
+
+Enter customer notes (optional): Customer ABC - Order #12345
+
+Enter line items in format: itemId/SKU quantity
+(itemId/SKU can be either the item ID or a SKU from elementIds)
+Press Enter on a blank line to finish
+
+Line 1: ITEM-001 50
+✔ Added: LEGO Brick 2x4 (Qty: 50, Available: 100)
+
+Line 2: SKU-789 25
+✔ Added: LEGO Plate 8x8 (Qty: 25, Available: 50)
+
+Line 3: 
+
+✔ Sales Order created successfully!
+✔ Order Number: SO-20260101230000
+✔ Total Lines: 2
+```
 
 ### Creating a Purchase Order
 
@@ -93,6 +168,7 @@ This command:
 2. Dispatches `PurchaseOrderCreatedEvent`
 3. Creates `purchase_order_created` events in the event store
 4. Updates `quantityOnOrder` for each item
+5. **Note:** Does NOT update `quantityAvailable`
 
 ### Receiving Items
 
@@ -232,18 +308,32 @@ Potential improvements:
 
 ## Inventory Flow Example
 
-Here's a complete flow showing how events track inventory:
+Here's a complete flow showing how events track inventory with the new quantityCommitted field:
+
+**Initial State:**
+- quantityOnHand = 0
+- quantityOnOrder = 0
+- quantityCommitted = 0
+- quantityAvailable = 0
 
 1. **Create Purchase Order** (100 units)
    - Event: `purchase_order_created`, quantity_change: +100
-   - State: quantityOnOrder = 100, quantityOnHand = 0, quantityAvailable = 100
+   - State: quantityOnOrder = 100, quantityOnHand = 0, quantityCommitted = 0, quantityAvailable = 0
+   - **Note:** quantityAvailable is NOT increased because items are not yet in stock
 
 2. **Receive Items** (100 units)
    - Event: `item_received`, quantity_change: +100
-   - State: quantityOnOrder = 0, quantityOnHand = 100, quantityAvailable = 100
+   - State: quantityOnOrder = 0, quantityOnHand = 100, quantityCommitted = 0, quantityAvailable = 100
+   - **Note:** quantityAvailable is now updated because items are physically in stock
 
-3. **Fulfill Sales Order** (50 units)
-   - Event: `item_fulfilled`, quantity_change: -50
-   - State: quantityOnOrder = 0, quantityOnHand = 50, quantityAvailable = 50
+3. **Create Sales Order** (30 units)
+   - Event: `sales_order_created`, quantity_change: -30
+   - State: quantityOnOrder = 0, quantityOnHand = 100, quantityCommitted = 30, quantityAvailable = 70
+   - **Note:** quantityAvailable decreased because 30 units are now committed to the sales order
+
+4. **Fulfill Sales Order** (30 units)
+   - Event: `item_fulfilled`, quantity_change: -30
+   - State: quantityOnOrder = 0, quantityOnHand = 70, quantityCommitted = 0, quantityAvailable = 70
+   - **Note:** Items have left the warehouse and are no longer committed
 
 At any time, you can query the `item_event` table to see the complete history and verify that the current state matches the sum of all events.
