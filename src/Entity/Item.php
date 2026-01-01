@@ -26,6 +26,9 @@ class Item
     public string $itemName = '';
 
     #[ORM\Column(type: 'integer')]
+    public int $quantityAvailable = 0;
+
+    #[ORM\Column(type: 'integer')]
     public int $quantityOnHand = 0;
 
     #[ORM\Column(type: 'integer')]
