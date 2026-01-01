@@ -132,7 +132,7 @@ class CreatePurchaseOrderCommandTest extends TestCase
             ->with('i')
             ->willReturn($queryBuilder);
 
-        $this->entityManager->expects($this->any())
+        $this->entityManager->expects($this->exactly(2))
             ->method('getRepository')
             ->with(Item::class)
             ->willReturn($repository);
@@ -177,7 +177,7 @@ class CreatePurchaseOrderCommandTest extends TestCase
             ->with('i')
             ->willReturn($queryBuilder);
 
-        $this->entityManager->expects($this->any())
+        $this->entityManager->expects($this->exactly(2))
             ->method('getRepository')
             ->with(Item::class)
             ->willReturn($repository);
