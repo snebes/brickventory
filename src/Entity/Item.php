@@ -25,6 +25,15 @@ class Item
     #[ORM\Column(type: 'text')]
     public string $itemName = '';
 
+    #[ORM\Column(type: 'integer')]
+    public int $quantityOnHand = 0;
+
+    #[ORM\Column(type: 'integer')]
+    public int $quantityOnOrder = 0;
+
+    #[ORM\Column(type: 'integer')]
+    public int $quantityBackOrdered = 0;
+
     public function __construct()
     {
         $this->uuid = Ulid::generate();
