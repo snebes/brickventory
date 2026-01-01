@@ -88,8 +88,8 @@ class ItemFulfilledEventHandlerTest extends TestCase
         ($this->handler)($event);
 
         // Assert
-        $this->assertEquals(70, $item->quantityOnHand); // 100 - 30
-        $this->assertEquals(0, $item->quantityBackOrdered); // 20 - 20 (fulfilled part of back order)
+        $this->assertEquals(70, $item->quantityOnHand); // 100 - 30 (total fulfilled)
+        $this->assertEquals(0, $item->quantityBackOrdered); // 20 - min(30, 20) = 0 (back orders fully satisfied)
         $this->assertEquals(70, $item->quantityAvailable); // 70 + 0 - 0
     }
 
