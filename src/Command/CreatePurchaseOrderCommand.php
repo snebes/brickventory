@@ -57,7 +57,8 @@ class CreatePurchaseOrderCommand extends Command
         $purchaseOrder->status = 'pending';
 
         $io->writeln('');
-        $io->writeln('Enter line items in format: <info>id quantity rate</info>');
+        $io->writeln('Enter line items in format: <info>itemId/SKU quantity rate</info>');
+        $io->writeln('(itemId/SKU can be either the item ID or a SKU from elementIds)');
         $io->writeln('Press Enter on a blank line to finish');
         $io->writeln('');
 
@@ -75,11 +76,11 @@ class CreatePurchaseOrderCommand extends Command
             $parts = preg_split('/\s+/', trim($lineInput));
             
             if (count($parts) !== 3) {
-                $io->error('Invalid format. Expected: id quantity rate');
+                $io->error('Invalid format. Expected: itemId/SKU quantity rate');
                 continue;
             }
 
-            [$itemId, $quantity, $rate] = $parts;
+            [$itemIdentifier, $quantity, $rate] = $parts;
 
             // Validate quantity is a positive integer
             if (!is_numeric($quantity) || (int)$quantity <= 0) {
@@ -93,11 +94,11 @@ class CreatePurchaseOrderCommand extends Command
                 continue;
             }
 
-            // Find the item
-            $item = $this->entityManager->getRepository(Item::class)->findOneBy(['id' => (int)$itemId]);
+            // Find the item by itemId or elementIds
+            $item = $this->findItemByIdentifier($itemIdentifier);
             
             if (!$item) {
-                $io->error("Item with ID {$itemId} not found");
+                $io->error("Item with identifier '{$itemIdentifier}' not found");
                 continue;
             }
 
@@ -135,5 +136,45 @@ class CreatePurchaseOrderCommand extends Command
         ]);
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Find an item by database ID, itemId, or a SKU in the elementIds field
+     */
+    private function findItemByIdentifier(string $identifier): ?Item
+    {
+        // First, try to find by database ID if the identifier is numeric (backward compatibility)
+        if (is_numeric($identifier)) {
+            $item = $this->entityManager->getRepository(Item::class)->findOneBy(['id' => (int)$identifier]);
+            if ($item) {
+                return $item;
+            }
+        }
+
+        // Next, try to find by itemId
+        $item = $this->entityManager->getRepository(Item::class)->findOneBy(['itemId' => $identifier]);
+        
+        if ($item) {
+            return $item;
+        }
+
+        // If not found, search in elementIds (comma-separated field)
+        // Use a custom query to find items where elementIds contains the identifier
+        $qb = $this->entityManager->getRepository(Item::class)->createQueryBuilder('i');
+        $items = $qb
+            ->where($qb->expr()->like('i.elementIds', ':identifier'))
+            ->setParameter('identifier', '%' . $identifier . '%')
+            ->getQuery()
+            ->getResult();
+
+        // Filter results to ensure exact match in comma-separated list
+        foreach ($items as $item) {
+            $elementIds = array_map('trim', explode(',', $item->elementIds));
+            if (in_array($identifier, $elementIds, true)) {
+                return $item;
+            }
+        }
+
+        return null;
     }
 }
