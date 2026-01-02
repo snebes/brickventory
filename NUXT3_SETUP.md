@@ -43,7 +43,8 @@ brickventory/
 ## Prerequisites
 
 - **PHP 8.4+** for Symfony backend
-- **Node.js 18+** and npm for Nuxt frontend
+- **Node.js 22.x or 24.x** (LTS recommended) for Nuxt frontend
+- **Yarn 1.22+** (preferred package manager)
 - **PostgreSQL** database
 - **Docker & Docker Compose** (optional, for containerized setup)
 
@@ -107,12 +108,12 @@ brickventory/
 
 2. **Install dependencies**:
    ```bash
-   npm install
+   yarn install
    ```
 
 3. **Start development server**:
    ```bash
-   npm run dev
+   yarn dev
    ```
 
    The Nuxt app will be available at http://localhost:3000
@@ -132,7 +133,7 @@ symfony server:start
 **Terminal 2 - Nuxt Frontend**:
 ```bash
 cd nuxt
-npm run dev
+yarn dev
 # Runs on http://localhost:3000
 ```
 

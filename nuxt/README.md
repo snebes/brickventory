@@ -2,21 +2,26 @@
 
 This is the frontend application for Brickventory, built with Nuxt 3.
 
+## Requirements
+
+- **Node.js**: Version 22.x or 24.x (LTS recommended)
+- **Yarn**: Version 1.22+ or higher (preferred package manager)
+
 ## Quick Start
 
 ```bash
 # Install dependencies
-npm install
+yarn install
 
 # Start development server
-npm run dev
+yarn dev
 # Opens at http://localhost:3000
 
 # Build for production
-npm run build
+yarn build
 
 # Preview production build
-npm run preview
+yarn preview
 ```
 
 ## Features
@@ -59,11 +64,11 @@ NUXT_PUBLIC_API_BASE=https://api.yourdomain.com
 
 ## Available Scripts
 
-- `npm run dev` - Start development server with HMR
-- `npm run build` - Build for production
-- `npm run generate` - Generate static site
-- `npm run preview` - Preview production build locally
-- `npm run postinstall` - Generate TypeScript types (runs automatically)
+- `yarn dev` - Start development server with HMR
+- `yarn build` - Build for production
+- `yarn generate` - Generate static site
+- `yarn preview` - Preview production build locally
+- `yarn postinstall` - Generate TypeScript types (runs automatically)
 
 ## API Integration
 
