@@ -91,12 +91,19 @@ watch(() => props.modelValue, async (newValue) => {
       selectedItem.value = existingItem
       searchQuery.value = `${existingItem.itemId} - ${existingItem.itemName}`
     } else {
-      // Load items to find the selected one
-      await loadItems('', 1, true)
-      const item = items.value.find(i => i.id === newValue)
-      if (item) {
-        selectedItem.value = item
-        searchQuery.value = `${item.itemId} - ${item.itemName}`
+      // Load the specific item by ID
+      try {
+        const item = await api.getItem(newValue as number)
+        if (item) {
+          selectedItem.value = item
+          searchQuery.value = `${item.itemId} - ${item.itemName}`
+          // Add to items list if not already there
+          if (!items.value.find(i => i.id === item.id)) {
+            items.value = [item, ...items.value]
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load selected item:', error)
       }
     }
   } else if (!newValue) {

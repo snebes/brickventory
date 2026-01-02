@@ -34,7 +34,7 @@ class ItemController extends AbstractController
         
         if (!empty($search)) {
             $queryBuilder
-                ->where('i.itemId LIKE :search OR i.itemName LIKE :search')
+                ->where('i.itemId LIKE :search OR i.itemName LIKE :search OR i.elementIds LIKE :search')
                 ->setParameter('search', '%' . $search . '%');
         }
         
