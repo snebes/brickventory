@@ -84,7 +84,12 @@ const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 
 // Watch for modelValue changes to update the display
 watch(() => props.modelValue, async (newValue) => {
-  if (newValue && !selectedItem.value) {
+  if (newValue) {
+    // Check if we already have this item selected
+    if (selectedItem.value && selectedItem.value.id === newValue) {
+      return // Already selected, no need to reload
+    }
+    
     // First check if the item is already in the loaded items
     const existingItem = items.value.find(i => i.id === newValue)
     if (existingItem) {
