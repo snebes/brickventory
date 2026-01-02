@@ -91,6 +91,7 @@
               <td>
                 <div class="actions">
                   <button class="btn btn-secondary btn-small" @click="editItem(item)">Edit</button>
+                  <button class="btn btn-danger btn-small" @click="deleteItem(item.id)">Delete</button>
                 </div>
               </td>
             </tr>
@@ -227,6 +228,20 @@ const sortBy = (field: keyof Item) => {
 const editItem = (item: Item) => {
   editingItem.value = { ...item }
   showForm.value = true
+}
+
+const deleteItem = async (id: number) => {
+  if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+    return
+  }
+  
+  try {
+    await api.deleteItem(id)
+    await loadItems()
+  } catch (error) {
+    console.error('Failed to delete item:', error)
+    alert('Failed to delete item. It may be in use by purchase or sales orders.')
+  }
 }
 
 const handleSave = async () => {

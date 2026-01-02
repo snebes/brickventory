@@ -106,9 +106,9 @@ class ItemController extends AbstractController
             return $this->json(['error' => 'Invalid JSON'], 400);
         }
         
-        // Get or create a default category
+        // Get or create a default category (only once per request cycle)
         $categoryRepository = $this->entityManager->getRepository(ItemCategory::class);
-        $category = $categoryRepository->findOneBy([]);
+        $category = $categoryRepository->findOneBy(['name' => 'Default']);
         
         if (!$category) {
             $category = new ItemCategory();
