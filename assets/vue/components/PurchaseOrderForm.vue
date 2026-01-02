@@ -38,7 +38,7 @@ const loadOrder = async () => {
             reference: order.reference || '',
             notes: order.notes || '',
             lines: order.lines.map(line => ({
-                itemId: line.item.id,
+                itemId: line.item?.id || '',
                 quantityOrdered: line.quantityOrdered,
                 rate: line.rate
             }))
