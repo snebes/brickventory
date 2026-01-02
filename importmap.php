@@ -25,4 +25,7 @@ return [
     '@hotwired/turbo' => [
         'version' => '7.3.0',
     ],
+    'vue' => [
+        'version' => '3.5.13',
+    ],
 ];
