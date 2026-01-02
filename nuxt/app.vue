@@ -5,6 +5,7 @@
       <nav>
         <NuxtLink to="/" exact-active-class="active">Purchase Orders</NuxtLink>
         <NuxtLink to="/sales-orders" exact-active-class="active">Sales Orders</NuxtLink>
+        <NuxtLink to="/items" exact-active-class="active">Items</NuxtLink>
       </nav>
     </div>
     <div class="main-content">
