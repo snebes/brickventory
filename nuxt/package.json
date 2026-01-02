@@ -1,0 +1,22 @@
+{
+  "name": "brickventory-frontend",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.5.3",
+  "engines": {
+    "node": ">=22.0.0 || ^24.0.0",
+    "yarn": ">=1.22.0"
+  },
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "nuxt": "^3.20.2",
+    "vue": "^3.5.26",
+    "vue-router": "^4.6.4"
+  }
+}

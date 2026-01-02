@@ -1,14 +1,40 @@
-# Vue 3 Frontend for Purchase and Sales Orders
+# Vue 3 Frontend - Historical Reference
 
-This document describes the Vue 3 frontend implementation for managing purchase orders and sales orders.
+> **⚠️ DEPRECATED**: This document describes the legacy Vue 3 in Twig implementation that has been replaced by Nuxt 3.
+>
+> **For the current frontend implementation, see [NUXT3_SETUP.md](NUXT3_SETUP.md)**
 
-## Overview
+## Migration to Nuxt 3
 
-A Vue 3-based single-page application (SPA) has been created that provides a user-friendly interface for creating, viewing, editing, and managing purchase orders and sales orders. The frontend communicates with the backend via REST API endpoints.
+The Vue 3 frontend has been migrated from an embedded Twig-based approach to a standalone **Nuxt 3** application. This provides:
+
+- ✅ Complete separation of frontend and backend
+- ✅ Full TypeScript support
+- ✅ Modern development workflow with hot module replacement
+- ✅ Server-side rendering (SSR) capabilities
+- ✅ Better performance and scalability
+
+For setup and usage instructions, see:
+- **[NUXT3_SETUP.md](NUXT3_SETUP.md)** - Complete setup guide
+- **[ARCHITECTURE_COMPARISON.md](ARCHITECTURE_COMPARISON.md)** - Comparison of approaches
+- **[QUICK_START.md](QUICK_START.md)** - Quick start guide
+
+---
+
+## Legacy Implementation (Historical Reference)
+
+The following describes the previous Vue 3 in Twig implementation that was used before the Nuxt 3 migration.
+
+### Overview
+
+A Vue 3-based single-page application (SPA) was created that provided a user-friendly interface for creating, viewing, editing, and managing purchase orders and sales orders. The frontend communicated with the backend via REST API endpoints.
 
 ## Features
 
-### User Interface
+### User Interface (Legacy)
+
+The legacy implementation provided:
+
 - **Left Sidebar Navigation**: Quick access to Purchase Orders and Sales Orders
 - **Purchase Orders Management**:
   - List all purchase orders with order number, date, reference, status, and line count
@@ -25,7 +51,9 @@ A Vue 3-based single-page application (SPA) has been created that provides a use
   - Line items include: item selection and quantity
   - Shows available quantity for each item during order creation
 
-### Backend API Endpoints
+### Backend API Endpoints (Still Valid)
+
+The following API endpoints remain unchanged and are still used by the new Nuxt 3 frontend:
 
 #### Purchase Orders
 - `GET /api/purchase-orders` - List all purchase orders
@@ -44,9 +72,11 @@ A Vue 3-based single-page application (SPA) has been created that provides a use
 #### Items
 - `GET /api/items` - List all items (for dropdowns in order forms)
 
-## Technical Implementation
+## Legacy Technical Implementation
 
-### Frontend Stack
+> **Note**: The following describes the deprecated implementation. For current implementation, see [NUXT3_SETUP.md](NUXT3_SETUP.md).
+
+### Frontend Stack (Legacy)
 - **Vue 3**: Modern JavaScript framework for building the UI
 - **Vue Router**: Client-side routing for navigation between views
 - **Vue3 SFC Loader**: Enables loading of Single File Components (.vue files) without a build step
@@ -65,21 +95,22 @@ This structure resolves the conflict between Vue's `{{ }}` template syntax and T
 
 ### Backend Components
 
-#### Controllers
-1. **AppController** (`src/Controller/AppController.php`)
-   - Renders the main SPA page at the root URL (`/`)
+This structure resolved the conflict between Vue's `{{ }}` template syntax and Twig's syntax by keeping all Vue component templates in separate `.vue` Single File Component files.
 
-2. **PurchaseOrderController** (`src/Controller/PurchaseOrderController.php`)
+### Backend Components (Still Valid)
+
+#### Controllers (Still Valid)
+1. **PurchaseOrderController** (`src/Controller/PurchaseOrderController.php`)
    - RESTful API for purchase order CRUD operations
    - Dispatches `PurchaseOrderCreatedEvent` to update inventory
    - Validates line items and item availability
 
-3. **SalesOrderController** (`src/Controller/SalesOrderController.php`)
+2. **SalesOrderController** (`src/Controller/SalesOrderController.php`)
    - RESTful API for sales order CRUD operations
    - Dispatches `SalesOrderCreatedEvent` to update inventory
    - Validates line items and item availability
 
-4. **ItemController** (`src/Controller/ItemController.php`)
+3. **ItemController** (`src/Controller/ItemController.php`)
    - Provides a list of all items with inventory quantities
    - Used for populating item dropdowns in order forms
 
@@ -106,7 +137,9 @@ The application uses Vue Router with hash-based routing:
 - `/sales-orders/new` - Create new sales order
 - `/sales-orders/:id/edit` - Edit existing sales order
 
-## Inventory Integration
+**These have been replaced by the Nuxt 3 components in the `/nuxt` directory.**
+
+## Inventory Integration (Still Valid)
 
 When purchase orders or sales orders are saved:
 
@@ -122,65 +155,13 @@ When purchase orders or sales orders are saved:
 
 This follows the event sourcing pattern already implemented in the system (see [EVENT_SOURCING.md](EVENT_SOURCING.md)).
 
-## Usage
+## Legacy Usage (Historical Reference)
 
-### Accessing the Frontend
-1. Start the Symfony server (requires PHP 8.4+):
-   ```bash
-   symfony server:start
-   ```
-   Or using Docker:
-   ```bash
-   docker-compose up -d
-   ```
+> **Note**: This section describes the old implementation. For current usage, see [QUICK_START.md](QUICK_START.md).
 
-2. Open your browser and navigate to `http://localhost:8000` (or your configured URL)
+The legacy implementation was accessed at `http://localhost:8000` and provided UI for creating and managing orders inline with the Symfony application.
 
-3. The UI will load with the Purchase Orders view by default
-
-### Creating a Purchase Order
-1. Click "Create Purchase Order" button
-2. Fill in the order details:
-   - Order Number (optional - auto-generated if left empty)
-   - Order Date
-   - Status (pending, completed, cancelled)
-   - Reference (vendor reference, PO number, etc.)
-   - Notes
-3. Add line items by clicking "Add Line"
-4. For each line item:
-   - Select an item from the dropdown
-   - Enter quantity
-   - Enter rate (price per unit)
-5. Click "Save" to create the order
-6. Inventory will be automatically updated via the event system
-
-### Creating a Sales Order
-1. Click "Sales Orders" in the sidebar
-2. Click "Create Sales Order" button
-3. Fill in the order details:
-   - Order Number (optional - auto-generated if left empty)
-   - Order Date
-   - Status (pending, completed, cancelled)
-   - Notes
-4. Add line items by clicking "Add Line"
-5. For each line item:
-   - Select an item from the dropdown (shows available quantity)
-   - Enter quantity
-6. Click "Save" to create the order
-7. Inventory will be automatically updated via the event system
-
-### Editing Orders
-1. Click the "Edit" button next to any order in the list
-2. Modify the order details or line items
-3. Click "Save" to update
-4. Inventory will be recalculated based on the updated order
-
-### Deleting Orders
-1. Click the "Delete" button next to any order in the list
-2. Confirm the deletion
-3. The order will be removed from the system
-
-## Architecture Notes
+## Architecture Notes (Still Valid)
 
 ### CQRS Pattern
 The implementation follows Command Query Responsibility Segregation (CQRS):
@@ -194,27 +175,21 @@ All inventory changes are recorded as immutable events:
 - Current state can be reconstructed from event history
 - See [EVENT_SOURCING.md](EVENT_SOURCING.md) for details
 
-### No Build Step
-The frontend uses Vue 3 via CDN and Symfony's importmap system:
-- No npm, webpack, or vite required
-- Faster development with instant updates
-- Simpler deployment
+### Event Sourcing (Still Valid)
+All inventory changes are recorded as immutable events:
+- Complete audit trail of inventory changes
+- Current state can be reconstructed from event history
+- See [EVENT_SOURCING.md](EVENT_SOURCING.md) for details
 
-## Future Enhancements
+## Migration to Nuxt 3
 
-Potential improvements:
-- Add search and filtering to order lists
-- Implement pagination for large order lists
-- Add order totals and subtotals
-- Support for order status transitions (e.g., pending → completed)
-- Bulk actions (delete multiple orders)
-- Export orders to CSV/PDF
-- Advanced item search/filtering in order forms
-- Validation for available inventory before creating sales orders
-- Real-time inventory updates using WebSockets or SSE
-- Order history and change tracking
+**The Vue 3 in Twig implementation has been completely replaced by Nuxt 3.**
 
-## Files Modified
+### What Changed
+- **Frontend moved** from embedded Twig templates to standalone Nuxt 3 app in `/nuxt`
+- **URL changed** from `http://localhost:8000/` to `http://localhost:3000/`
+- **Backend simplified** to pure API service on `http://localhost:8000/api`
+- **All Vue/Twig files removed**: `assets/vue/`, `templates/`, `importmap.php`
 
 - `importmap.php` - Added Vue 3, Vue Router, and Vue3 SFC Loader to the importmap
 - `assets/app.js` - Import and mount Vue application
@@ -230,14 +205,19 @@ Potential improvements:
 - `src/Controller/SalesOrderController.php` - Sales orders API
 - `templates/app/index.html.twig` - Clean Vue 3 SPA template with router
 
-## Requirements
+### Getting Started with Nuxt 3
+See [QUICK_START.md](QUICK_START.md) for setup instructions or run:
 
-- PHP 8.4+
-- Symfony 8.0
-- PostgreSQL (or compatible database)
-- Modern web browser with ES6 module support
+```bash
+./start.sh
+```
+
+Then access the frontend at **http://localhost:3000**
 
 ## Related Documentation
 
+- **[NUXT3_SETUP.md](NUXT3_SETUP.md)** - Complete Nuxt 3 setup guide
+- **[ARCHITECTURE_COMPARISON.md](ARCHITECTURE_COMPARISON.md)** - Detailed comparison
+- **[QUICK_START.md](QUICK_START.md)** - Quick start guide
 - [PURCHASE_ORDER_COMMAND.md](PURCHASE_ORDER_COMMAND.md) - CLI command for purchase orders
 - [EVENT_SOURCING.md](EVENT_SOURCING.md) - Event sourcing implementation details
