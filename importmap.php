@@ -28,4 +28,7 @@ return [
     'vue' => [
         'version' => '3.5.13',
     ],
+    'vue-router' => [
+        'version' => '4.5.0',
+    ],
 ];
