@@ -1,8 +1,30 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import PurchaseOrdersList from './components/PurchaseOrdersList.js';
-import PurchaseOrderForm from './components/PurchaseOrderForm.js';
-import SalesOrdersList from './components/SalesOrdersList.js';
-import SalesOrderForm from './components/SalesOrderForm.js';
+import * as Vue from 'vue';
+import { loadModule } from 'vue3-sfc-loader';
+
+const options = {
+    moduleCache: {
+        vue: Vue,
+    },
+    async getFile(url) {
+        const res = await fetch(url);
+        if (!res.ok)
+            throw Object.assign(new Error(res.statusText + ' ' + url), { res });
+        return {
+            getContentData: asBinary => asBinary ? res.arrayBuffer() : res.text(),
+        }
+    },
+    addStyle(textContent) {
+        const style = Object.assign(document.createElement('style'), { textContent });
+        const ref = document.head.getElementsByTagName('style')[0] || null;
+        document.head.insertBefore(style, ref);
+    },
+};
+
+// Helper function to load .vue components
+const loadComponent = (path) => {
+    return () => loadModule(path, options);
+};
 
 const routes = [
     {
@@ -12,32 +34,32 @@ const routes = [
     {
         path: '/purchase-orders',
         name: 'PurchaseOrdersList',
-        component: PurchaseOrdersList
+        component: loadComponent('./components/PurchaseOrdersList.vue')
     },
     {
         path: '/purchase-orders/new',
         name: 'PurchaseOrderCreate',
-        component: PurchaseOrderForm
+        component: loadComponent('./components/PurchaseOrderForm.vue')
     },
     {
         path: '/purchase-orders/:id/edit',
         name: 'PurchaseOrderEdit',
-        component: PurchaseOrderForm
+        component: loadComponent('./components/PurchaseOrderForm.vue')
     },
     {
         path: '/sales-orders',
         name: 'SalesOrdersList',
-        component: SalesOrdersList
+        component: loadComponent('./components/SalesOrdersList.vue')
     },
     {
         path: '/sales-orders/new',
         name: 'SalesOrderCreate',
-        component: SalesOrderForm
+        component: loadComponent('./components/SalesOrderForm.vue')
     },
     {
         path: '/sales-orders/:id/edit',
         name: 'SalesOrderEdit',
-        component: SalesOrderForm
+        component: loadComponent('./components/SalesOrderForm.vue')
     }
 ];
 

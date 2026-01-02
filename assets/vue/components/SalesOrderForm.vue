@@ -1,3 +1,4 @@
+<script>
 export default {
     name: 'SalesOrderForm',
     data() {
@@ -89,69 +90,71 @@ export default {
         cancel() {
             this.$router.push('/sales-orders');
         }
-    },
-    template: `
-        <div>
-            <div class="header">
-                <h2>{{ orderId ? 'Edit' : 'Create' }} Sales Order</h2>
+    }
+};
+</script>
+
+<template>
+    <div>
+        <div class="header">
+            <h2>{{ orderId ? 'Edit' : 'Create' }} Sales Order</h2>
+        </div>
+        
+        <div class="card">
+            <div class="form-group">
+                <label>Order Number</label>
+                <input v-model="form.orderNumber" placeholder="Leave empty to auto-generate" :readonly="!!orderId">
             </div>
             
-            <div class="card">
-                <div class="form-group">
-                    <label>Order Number</label>
-                    <input v-model="form.orderNumber" placeholder="Leave empty to auto-generate" :readonly="!!orderId">
-                </div>
+            <div class="form-group">
+                <label>Order Date</label>
+                <input v-model="form.orderDate" type="date">
+            </div>
+            
+            <div class="form-group">
+                <label>Status</label>
+                <select v-model="form.status">
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea v-model="form.notes" placeholder="Additional notes"></textarea>
+            </div>
+            
+            <div class="line-items">
+                <h3>Line Items</h3>
+                <button class="btn btn-secondary" @click="addLine" style="margin: 10px 0;">Add Line</button>
                 
-                <div class="form-group">
-                    <label>Order Date</label>
-                    <input v-model="form.orderDate" type="date">
-                </div>
-                
-                <div class="form-group">
-                    <label>Status</label>
-                    <select v-model="form.status">
-                        <option value="pending">Pending</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Notes</label>
-                    <textarea v-model="form.notes" placeholder="Additional notes"></textarea>
-                </div>
-                
-                <div class="line-items">
-                    <h3>Line Items</h3>
-                    <button class="btn btn-secondary" @click="addLine" style="margin: 10px 0;">Add Line</button>
-                    
-                    <div v-for="(line, index) in form.lines" :key="index" class="line-item">
-                        <div>
-                            <label>Item</label>
-                            <select v-model="line.itemId">
-                                <option value="">Select item</option>
-                                <option v-for="item in items" :key="item.id" :value="item.id">
-                                    {{ item.itemId }} - {{ item.itemName }} (Available: {{ item.quantityAvailable }})
-                                </option>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Quantity</label>
-                            <input v-model.number="line.quantityOrdered" type="number" min="1">
-                        </div>
-                        <div style="flex: 0;">
-                            <button class="btn btn-danger" @click="removeLine(index)">Remove</button>
-                        </div>
+                <div v-for="(line, index) in form.lines" :key="index" class="line-item">
+                    <div>
+                        <label>Item</label>
+                        <select v-model="line.itemId">
+                            <option value="">Select item</option>
+                            <option v-for="item in items" :key="item.id" :value="item.id">
+                                {{ item.itemId }} - {{ item.itemName }} (Available: {{ item.quantityAvailable }})
+                            </option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Quantity</label>
+                        <input v-model.number="line.quantityOrdered" type="number" min="1">
+                    </div>
+                    <div style="flex: 0;">
+                        <button class="btn btn-danger" @click="removeLine(index)">Remove</button>
                     </div>
                 </div>
-                
-                <div class="actions">
-                    <button class="btn btn-success" @click="save" :disabled="loading">
-                        {{ loading ? 'Saving...' : 'Save' }}
-                    </button>
-                    <button class="btn btn-secondary" @click="cancel" :disabled="loading">Cancel</button>
-                </div>
+            </div>
+            
+            <div class="actions">
+                <button class="btn btn-success" @click="save" :disabled="loading">
+                    {{ loading ? 'Saving...' : 'Save' }}
+                </button>
+                <button class="btn btn-secondary" @click="cancel" :disabled="loading">Cancel</button>
             </div>
         </div>
-    `
-};
+    </div>
+</template>

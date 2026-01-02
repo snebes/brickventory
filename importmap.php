@@ -31,4 +31,7 @@ return [
     'vue-router' => [
         'version' => '4.5.0',
     ],
+    'vue3-sfc-loader' => [
+        'version' => '0.9.5',
+    ],
 ];

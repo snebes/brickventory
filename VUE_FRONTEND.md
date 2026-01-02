@@ -49,17 +49,18 @@ A Vue 3-based single-page application (SPA) has been created that provides a use
 ### Frontend Stack
 - **Vue 3**: Modern JavaScript framework for building the UI
 - **Vue Router**: Client-side routing for navigation between views
+- **Vue3 SFC Loader**: Enables loading of Single File Components (.vue files) without a build step
 - **Vanilla JavaScript**: No build step required - uses native ES modules
 - **Symfony Asset Mapper**: Manages frontend assets and importmap
 
 ### Architecture
-The Vue application follows best practices with a proper component-based structure:
-- **Components**: Separated into individual `.js` files in `assets/vue/components/`
-- **Router**: Configured in `assets/vue/router.js` using hash-based routing
+The Vue application follows best practices with a proper component-based structure using Single File Components (SFC):
+- **Components**: Separated into `.vue` files in `assets/vue/components/` with `<script>` and `<template>` sections
+- **Router**: Configured in `assets/vue/router.js` using hash-based routing with vue3-sfc-loader
 - **Main App**: Bootstrapped in `assets/vue/app.js`
 - **Template**: Clean Twig template in `templates/app/index.html.twig` using `<router-view>` and `<router-link>`
 
-This structure resolves the conflict between Vue's `{{ }}` template syntax and Twig's syntax by keeping all Vue component templates in separate JavaScript files.
+This structure resolves the conflict between Vue's `{{ }}` template syntax and Twig's syntax by keeping all Vue component templates in separate `.vue` Single File Component files.
 
 ### Backend Components
 
@@ -84,14 +85,16 @@ This structure resolves the conflict between Vue's `{{ }}` template syntax and T
 ### Templates
 - **templates/app/index.html.twig**: Main SPA template with sidebar navigation and router-view
 - **assets/vue/app.js**: Vue application initialization and router setup
-- **assets/vue/router.js**: Vue Router configuration with route definitions
+- **assets/vue/router.js**: Vue Router configuration with route definitions and vue3-sfc-loader integration
 
 ### Vue Components
-Components are located in `assets/vue/components/`:
-1. **PurchaseOrdersList.js**: Displays list of purchase orders with actions
-2. **PurchaseOrderForm.js**: Form for creating/editing purchase orders
-3. **SalesOrdersList.js**: Displays list of sales orders with actions
-4. **SalesOrderForm.js**: Form for creating/editing sales orders
+Components are located in `assets/vue/components/` as Single File Components (.vue):
+1. **PurchaseOrdersList.vue**: Displays list of purchase orders with actions
+2. **PurchaseOrderForm.vue**: Form for creating/editing purchase orders
+3. **SalesOrdersList.vue**: Displays list of sales orders with actions
+4. **SalesOrderForm.vue**: Form for creating/editing sales orders
+
+Each component uses the standard Vue SFC format with `<script>` and `<template>` sections.
 
 ### Routing
 The application uses Vue Router with hash-based routing:
@@ -212,14 +215,14 @@ Potential improvements:
 
 ## Files Modified
 
-- `importmap.php` - Added Vue 3 and Vue Router to the importmap
+- `importmap.php` - Added Vue 3, Vue Router, and Vue3 SFC Loader to the importmap
 - `assets/app.js` - Import and mount Vue application
 - `assets/vue/app.js` - Vue application initialization
-- `assets/vue/router.js` - Vue Router configuration
-- `assets/vue/components/PurchaseOrdersList.js` - Purchase orders list component
-- `assets/vue/components/PurchaseOrderForm.js` - Purchase order form component
-- `assets/vue/components/SalesOrdersList.js` - Sales orders list component
-- `assets/vue/components/SalesOrderForm.js` - Sales order form component
+- `assets/vue/router.js` - Vue Router configuration with vue3-sfc-loader
+- `assets/vue/components/PurchaseOrdersList.vue` - Purchase orders list component (SFC)
+- `assets/vue/components/PurchaseOrderForm.vue` - Purchase order form component (SFC)
+- `assets/vue/components/SalesOrdersList.vue` - Sales orders list component (SFC)
+- `assets/vue/components/SalesOrderForm.vue` - Sales order form component (SFC)
 - `src/Controller/AppController.php` - Main SPA controller
 - `src/Controller/ItemController.php` - Items API endpoint
 - `src/Controller/PurchaseOrderController.php` - Purchase orders API
