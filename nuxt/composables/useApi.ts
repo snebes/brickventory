@@ -50,6 +50,14 @@ export const useApi = () => {
     }),
     
     // Items
-    getItems: () => fetchAPI('/api/items')
+    getItems: (params?: { page?: number; limit?: number; search?: string }) => {
+      const queryParams = new URLSearchParams()
+      if (params?.page) queryParams.append('page', params.page.toString())
+      if (params?.limit) queryParams.append('limit', params.limit.toString())
+      if (params?.search) queryParams.append('search', params.search)
+      
+      const query = queryParams.toString()
+      return fetchAPI(`/api/items${query ? '?' + query : ''}`)
+    }
   }
 }
