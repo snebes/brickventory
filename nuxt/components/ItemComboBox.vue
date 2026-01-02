@@ -88,8 +88,8 @@ watch(() => props.modelValue, async (newValue) => {
     // Normalize newValue to a number for comparison
     const itemId = typeof newValue === 'string' ? parseInt(newValue, 10) : newValue
     
-    // Validate that we have a valid number
-    if (typeof itemId !== 'number' || isNaN(itemId)) {
+    // Validate that we have a valid positive integer ID
+    if (isNaN(itemId) || itemId <= 0) {
       console.error('Invalid item ID:', newValue)
       return
     }
