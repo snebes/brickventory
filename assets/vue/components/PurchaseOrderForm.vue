@@ -1,101 +1,106 @@
-<script>
-export default {
-    name: 'PurchaseOrderForm',
-    data() {
-        return {
-            form: {
-                orderNumber: '',
-                orderDate: new Date().toISOString().split('T')[0],
-                status: 'pending',
-                reference: '',
-                notes: '',
-                lines: []
-            },
-            items: [],
-            loading: false,
-            orderId: null
-        };
-    },
-    async mounted() {
-        this.orderId = this.$route.params.id;
-        await this.loadItems();
-        if (this.orderId) {
-            await this.loadOrder();
-        }
-    },
-    methods: {
-        async loadItems() {
-            try {
-                const response = await fetch('/api/items');
-                this.items = await response.json();
-            } catch (error) {
-                console.error('Error loading items:', error);
-            }
-        },
-        async loadOrder() {
-            try {
-                const response = await fetch(`/api/purchase-orders/${this.orderId}`);
-                const order = await response.json();
-                this.form = {
-                    orderNumber: order.orderNumber,
-                    orderDate: order.orderDate.split(' ')[0],
-                    status: order.status,
-                    reference: order.reference || '',
-                    notes: order.notes || '',
-                    lines: order.lines.map(line => ({
-                        itemId: line.item.id,
-                        quantityOrdered: line.quantityOrdered,
-                        rate: line.rate
-                    }))
-                };
-            } catch (error) {
-                console.error('Error loading purchase order:', error);
-            }
-        },
-        addLine() {
-            this.form.lines.push({
-                itemId: '',
-                quantityOrdered: 1,
-                rate: 0
-            });
-        },
-        removeLine(index) {
-            this.form.lines.splice(index, 1);
-        },
-        async save() {
-            this.loading = true;
-            try {
-                const url = this.orderId 
-                    ? `/api/purchase-orders/${this.orderId}`
-                    : '/api/purchase-orders';
-                const method = this.orderId ? 'PUT' : 'POST';
-                
-                const response = await fetch(url, {
-                    method,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(this.form)
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to save purchase order');
-                }
-                
-                this.$router.push('/purchase-orders');
-            } catch (error) {
-                console.error('Error saving purchase order:', error);
-                alert('Error: ' + error.message);
-            } finally {
-                this.loading = false;
-            }
-        },
-        cancel() {
-            this.$router.push('/purchase-orders');
-        }
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+
+const router = useRouter();
+const route = useRoute();
+
+const form = ref({
+    orderNumber: '',
+    orderDate: new Date().toISOString().split('T')[0],
+    status: 'pending',
+    reference: '',
+    notes: '',
+    lines: []
+});
+
+const items = ref([]);
+const loading = ref(false);
+const orderId = ref(null);
+
+const loadItems = async () => {
+    try {
+        const response = await fetch('/api/items');
+        items.value = await response.json();
+    } catch (error) {
+        console.error('Error loading items:', error);
     }
 };
+
+const loadOrder = async () => {
+    try {
+        const response = await fetch(`/api/purchase-orders/${orderId.value}`);
+        const order = await response.json();
+        form.value = {
+            orderNumber: order.orderNumber,
+            orderDate: order.orderDate.split(' ')[0],
+            status: order.status,
+            reference: order.reference || '',
+            notes: order.notes || '',
+            lines: order.lines.map(line => ({
+                itemId: line.item.id,
+                quantityOrdered: line.quantityOrdered,
+                rate: line.rate
+            }))
+        };
+    } catch (error) {
+        console.error('Error loading purchase order:', error);
+    }
+};
+
+const addLine = () => {
+    form.value.lines.push({
+        itemId: '',
+        quantityOrdered: 1,
+        rate: 0
+    });
+};
+
+const removeLine = (index) => {
+    form.value.lines.splice(index, 1);
+};
+
+const save = async () => {
+    loading.value = true;
+    try {
+        const url = orderId.value 
+            ? `/api/purchase-orders/${orderId.value}`
+            : '/api/purchase-orders';
+        const method = orderId.value ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(form.value)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save purchase order');
+        }
+        
+        router.push('/purchase-orders');
+    } catch (error) {
+        console.error('Error saving purchase order:', error);
+        alert('Error: ' + error.message);
+    } finally {
+        loading.value = false;
+    }
+};
+
+const cancel = () => {
+    router.push('/purchase-orders');
+};
+
+onMounted(async () => {
+    orderId.value = route.params.id;
+    await loadItems();
+    if (orderId.value) {
+        await loadOrder();
+    }
+});
 </script>
 
 <template>

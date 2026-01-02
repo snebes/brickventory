@@ -1,49 +1,49 @@
-<script>
-export default {
-    name: 'PurchaseOrdersList',
-    data() {
-        return {
-            orders: [],
-            loading: true
-        };
-    },
-    async mounted() {
-        await this.loadOrders();
-    },
-    methods: {
-        async loadOrders() {
-            this.loading = true;
-            try {
-                const response = await fetch('/api/purchase-orders');
-                this.orders = await response.json();
-            } catch (error) {
-                console.error('Error loading purchase orders:', error);
-            } finally {
-                this.loading = false;
-            }
-        },
-        createOrder() {
-            this.$router.push('/purchase-orders/new');
-        },
-        editOrder(order) {
-            this.$router.push(`/purchase-orders/${order.id}/edit`);
-        },
-        async deleteOrder(id) {
-            if (!confirm('Are you sure you want to delete this purchase order?')) {
-                return;
-            }
-            try {
-                await fetch(`/api/purchase-orders/${id}`, {
-                    method: 'DELETE'
-                });
-                await this.loadOrders();
-            } catch (error) {
-                console.error('Error deleting purchase order:', error);
-                alert('Error deleting purchase order');
-            }
-        }
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+const orders = ref([]);
+const loading = ref(true);
+
+const loadOrders = async () => {
+    loading.value = true;
+    try {
+        const response = await fetch('/api/purchase-orders');
+        orders.value = await response.json();
+    } catch (error) {
+        console.error('Error loading purchase orders:', error);
+    } finally {
+        loading.value = false;
     }
 };
+
+const createOrder = () => {
+    router.push('/purchase-orders/new');
+};
+
+const editOrder = (order) => {
+    router.push(`/purchase-orders/${order.id}/edit`);
+};
+
+const deleteOrder = async (id) => {
+    if (!confirm('Are you sure you want to delete this purchase order?')) {
+        return;
+    }
+    try {
+        await fetch(`/api/purchase-orders/${id}`, {
+            method: 'DELETE'
+        });
+        await loadOrders();
+    } catch (error) {
+        console.error('Error deleting purchase order:', error);
+        alert('Error deleting purchase order');
+    }
+};
+
+onMounted(async () => {
+    await loadOrders();
+});
 </script>
 
 <template>

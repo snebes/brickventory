@@ -55,7 +55,8 @@ A Vue 3-based single-page application (SPA) has been created that provides a use
 
 ### Architecture
 The Vue application follows best practices with a proper component-based structure using Single File Components (SFC):
-- **Components**: Separated into `.vue` files in `assets/vue/components/` with `<script>` and `<template>` sections
+- **Components**: Separated into `.vue` files in `assets/vue/components/` with `<script setup>` and `<template>` sections
+- **Composition API**: All components use the modern `<script setup>` syntax with Vue 3 Composition API
 - **Router**: Configured in `assets/vue/router.js` using hash-based routing with vue3-sfc-loader
 - **Main App**: Bootstrapped in `assets/vue/app.js`
 - **Template**: Clean Twig template in `templates/app/index.html.twig` using `<router-view>` and `<router-link>`
@@ -94,7 +95,7 @@ Components are located in `assets/vue/components/` as Single File Components (.v
 3. **SalesOrdersList.vue**: Displays list of sales orders with actions
 4. **SalesOrderForm.vue**: Form for creating/editing sales orders
 
-Each component uses the standard Vue SFC format with `<script>` and `<template>` sections.
+Each component uses the modern Vue 3 `<script setup>` syntax with Composition API and `<template>` sections.
 
 ### Routing
 The application uses Vue Router with hash-based routing:
