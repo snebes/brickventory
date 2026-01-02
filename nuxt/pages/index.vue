@@ -40,7 +40,7 @@
       </div>
     </div>
 
-    <PurchaseOrderForm 
+    <PurchaseOrdersPurchaseOrderForm 
       v-else 
       :order="editingOrder" 
       :items="items"
