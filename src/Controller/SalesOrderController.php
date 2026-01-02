@@ -144,7 +144,7 @@ class SalesOrderController extends AbstractController
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Update basic fields
+        // Update basic fields (orderNumber is intentionally not updatable to preserve uniqueness)
         if (isset($data['orderDate'])) {
             $so->orderDate = new \DateTime($data['orderDate']);
         }
