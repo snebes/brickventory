@@ -84,19 +84,38 @@ const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 
 // Watch for modelValue changes to update the display
 watch(() => props.modelValue, async (newValue) => {
-  if (newValue && !selectedItem.value) {
+  if (newValue) {
+    // Normalize newValue to a number for comparison
+    const itemId = typeof newValue === 'string' ? parseInt(newValue, 10) : newValue
+    
+    // Validate that we have a valid positive integer ID
+    if (isNaN(itemId) || itemId <= 0) {
+      console.error('Invalid item ID:', newValue)
+      return
+    }
+    
+    // Check if we already have this item selected
+    if (selectedItem.value && selectedItem.value.id === itemId) {
+      return // Already selected, no need to reload
+    }
+    
     // First check if the item is already in the loaded items
-    const existingItem = items.value.find(i => i.id === newValue)
+    const existingItem = items.value.find(i => i.id === itemId)
     if (existingItem) {
       selectedItem.value = existingItem
       searchQuery.value = `${existingItem.itemId} - ${existingItem.itemName}`
     } else {
-      // Load items to find the selected one
-      await loadItems('', 1, true)
-      const item = items.value.find(i => i.id === newValue)
-      if (item) {
-        selectedItem.value = item
-        searchQuery.value = `${item.itemId} - ${item.itemName}`
+      // Load the specific item by ID
+      try {
+        const item = await api.getItem(itemId)
+        if (item) {
+          selectedItem.value = item
+          searchQuery.value = `${item.itemId} - ${item.itemName}`
+          // Add to items list since it wasn't found
+          items.value = [item, ...items.value]
+        }
+      } catch (error) {
+        console.error('Failed to load selected item:', error)
       }
     }
   } else if (!newValue) {
