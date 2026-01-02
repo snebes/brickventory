@@ -111,10 +111,8 @@ watch(() => props.modelValue, async (newValue) => {
         if (item) {
           selectedItem.value = item
           searchQuery.value = `${item.itemId} - ${item.itemName}`
-          // Add to items list if not already there
-          if (!items.value.find(i => i.id === item.id)) {
-            items.value = [item, ...items.value]
-          }
+          // Add to items list since it wasn't found
+          items.value = [item, ...items.value]
         }
       } catch (error) {
         console.error('Failed to load selected item:', error)
