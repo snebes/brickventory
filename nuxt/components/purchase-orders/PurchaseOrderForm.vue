@@ -37,12 +37,11 @@
         <div v-for="(line, index) in formOrder.lines" :key="index" class="line-item">
           <div class="form-group">
             <label>Item *</label>
-            <select v-model="line.itemId" required>
-              <option value="">Select an item</option>
-              <option v-for="item in items" :key="item.id" :value="item.id">
-                {{ item.name }}
-              </option>
-            </select>
+            <ItemComboBox 
+              v-model="line.itemId" 
+              required 
+              placeholder="Search for an item..."
+            />
           </div>
           
           <div class="form-group">
@@ -72,7 +71,6 @@
 <script setup lang="ts">
 const props = defineProps<{
   order?: any
-  items: any[]
 }>()
 
 const emit = defineEmits(['save', 'cancel'])

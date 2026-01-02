@@ -32,12 +32,13 @@
         <div v-for="(line, index) in formOrder.lines" :key="index" class="line-item" style="grid-template-columns: 2fr 1fr auto;">
           <div class="form-group">
             <label>Item *</label>
-            <select v-model="line.itemId" required @change="updateAvailableQty(line)">
-              <option value="">Select an item</option>
-              <option v-for="item in items" :key="item.id" :value="item.id">
-                {{ item.name }} (Available: {{ item.quantityAvailable }})
-              </option>
-            </select>
+            <ItemComboBox 
+              v-model="line.itemId" 
+              required 
+              show-quantity
+              placeholder="Search for an item..."
+              @itemSelected="updateAvailableQty(line, $event)"
+            />
           </div>
           
           <div class="form-group">
@@ -71,7 +72,6 @@
 <script setup lang="ts">
 const props = defineProps<{
   order?: any
-  items: any[]
 }>()
 
 const emit = defineEmits(['save', 'cancel'])
@@ -111,7 +111,8 @@ const resetForm = () => {
 const addLine = () => {
   formOrder.value.lines.push({
     itemId: '',
-    quantityOrdered: 1
+    quantityOrdered: 1,
+    availableQty: 0
   })
 }
 
@@ -120,12 +121,13 @@ const removeLine = (index: number) => {
 }
 
 const getAvailableQty = (itemId: any) => {
-  const item = props.items.find(i => i.id === itemId)
-  return item?.quantityAvailable || 0
+  const line = formOrder.value.lines.find(l => l.itemId === itemId)
+  return line?.availableQty || 0
 }
 
-const updateAvailableQty = (line: any) => {
-  const maxQty = getAvailableQty(line.itemId)
+const updateAvailableQty = (line: any, item: any) => {
+  line.availableQty = item.quantityAvailable || 0
+  const maxQty = line.availableQty
   if (line.quantityOrdered > maxQty) {
     line.quantityOrdered = maxQty
   }

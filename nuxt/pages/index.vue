@@ -43,7 +43,6 @@
     <PurchaseOrdersPurchaseOrderForm 
       v-else 
       :order="editingOrder" 
-      :items="items"
       @save="handleSave" 
       @cancel="showForm = false; editingOrder = null" 
     />
@@ -53,7 +52,6 @@
 <script setup lang="ts">
 const api = useApi()
 const orders = ref([])
-const items = ref([])
 const showForm = ref(false)
 const editingOrder = ref(null)
 
@@ -62,14 +60,6 @@ const loadOrders = async () => {
     orders.value = await api.getPurchaseOrders()
   } catch (error) {
     console.error('Failed to load purchase orders:', error)
-  }
-}
-
-const loadItems = async () => {
-  try {
-    items.value = await api.getItems()
-  } catch (error) {
-    console.error('Failed to load items:', error)
   }
 }
 
@@ -115,6 +105,5 @@ const formatDate = (date: string) => {
 
 onMounted(() => {
   loadOrders()
-  loadItems()
 })
 </script>
