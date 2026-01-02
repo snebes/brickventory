@@ -88,6 +88,12 @@ watch(() => props.modelValue, async (newValue) => {
     // Normalize newValue to a number for comparison
     const itemId = typeof newValue === 'string' ? parseInt(newValue, 10) : newValue
     
+    // Validate that we have a valid number
+    if (typeof itemId !== 'number' || isNaN(itemId)) {
+      console.error('Invalid item ID:', newValue)
+      return
+    }
+    
     // Check if we already have this item selected
     if (selectedItem.value && selectedItem.value.id === itemId) {
       return // Already selected, no need to reload
@@ -101,15 +107,13 @@ watch(() => props.modelValue, async (newValue) => {
     } else {
       // Load the specific item by ID
       try {
-        if (typeof itemId === 'number' && !isNaN(itemId)) {
-          const item = await api.getItem(itemId)
-          if (item) {
-            selectedItem.value = item
-            searchQuery.value = `${item.itemId} - ${item.itemName}`
-            // Add to items list if not already there
-            if (!items.value.find(i => i.id === item.id)) {
-              items.value = [item, ...items.value]
-            }
+        const item = await api.getItem(itemId)
+        if (item) {
+          selectedItem.value = item
+          searchQuery.value = `${item.itemId} - ${item.itemName}`
+          // Add to items list if not already there
+          if (!items.value.find(i => i.id === item.id)) {
+            items.value = [item, ...items.value]
           }
         }
       } catch (error) {
