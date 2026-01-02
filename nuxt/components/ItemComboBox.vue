@@ -85,26 +85,31 @@ const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 // Watch for modelValue changes to update the display
 watch(() => props.modelValue, async (newValue) => {
   if (newValue) {
+    // Normalize newValue to a number for comparison
+    const itemId = typeof newValue === 'string' ? parseInt(newValue, 10) : newValue
+    
     // Check if we already have this item selected
-    if (selectedItem.value && selectedItem.value.id === newValue) {
+    if (selectedItem.value && selectedItem.value.id === itemId) {
       return // Already selected, no need to reload
     }
     
     // First check if the item is already in the loaded items
-    const existingItem = items.value.find(i => i.id === newValue)
+    const existingItem = items.value.find(i => i.id === itemId)
     if (existingItem) {
       selectedItem.value = existingItem
       searchQuery.value = `${existingItem.itemId} - ${existingItem.itemName}`
     } else {
       // Load the specific item by ID
       try {
-        const item = await api.getItem(newValue as number)
-        if (item) {
-          selectedItem.value = item
-          searchQuery.value = `${item.itemId} - ${item.itemName}`
-          // Add to items list if not already there
-          if (!items.value.find(i => i.id === item.id)) {
-            items.value = [item, ...items.value]
+        if (typeof itemId === 'number' && !isNaN(itemId)) {
+          const item = await api.getItem(itemId)
+          if (item) {
+            selectedItem.value = item
+            searchQuery.value = `${item.itemId} - ${item.itemName}`
+            // Add to items list if not already there
+            if (!items.value.find(i => i.id === item.id)) {
+              items.value = [item, ...items.value]
+            }
           }
         }
       } catch (error) {
