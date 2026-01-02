@@ -2,20 +2,25 @@ export const useApi = () => {
   const config = useRuntimeConfig()
   
   const fetchAPI = async (endpoint: string, options: any = {}) => {
-    const { data, error } = await useFetch(`${config.public.apiBase}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
+    try {
+      const { data, error } = await useFetch(`${config.public.apiBase}${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        }
+      })
+      
+      if (error.value) {
+        console.error('API Error:', error.value)
+        throw error.value
       }
-    })
-    
-    if (error.value) {
-      console.error('API Error:', error.value)
-      throw error.value
+      
+      return data.value
+    } catch (err) {
+      console.error('API Error:', err)
+      throw err
     }
-    
-    return data.value
   }
   
   return {
@@ -58,6 +63,18 @@ export const useApi = () => {
       
       const query = queryParams.toString()
       return fetchAPI(`/api/items${query ? '?' + query : ''}`)
-    }
+    },
+    getItem: (id: number) => fetchAPI(`/api/items/${id}`),
+    createItem: (item: any) => fetchAPI('/api/items', {
+      method: 'POST',
+      body: item
+    }),
+    updateItem: (id: number, item: any) => fetchAPI(`/api/items/${id}`, {
+      method: 'PUT',
+      body: item
+    }),
+    deleteItem: (id: number) => fetchAPI(`/api/items/${id}`, {
+      method: 'DELETE'
+    })
   }
 }
