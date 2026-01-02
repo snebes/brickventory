@@ -19,6 +19,21 @@ services:
       # - ./docker/db/data:/var/lib/postgresql/data:rw
 ###< doctrine/doctrine-bundle ###
 
+###> nuxt frontend ###
+  nuxt:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./nuxt:/app:rw
+    environment:
+      - NUXT_PUBLIC_API_BASE=http://localhost:8000
+    depends_on:
+      - database
+###< nuxt frontend ###
+
 volumes:
 ###> doctrine/doctrine-bundle ###
   database_data:

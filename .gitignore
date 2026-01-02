@@ -19,3 +19,10 @@
 /public/assets/
 /assets/vendor/
 ###< symfony/asset-mapper ###
+
+###> nuxt ###
+nuxt/node_modules/
+nuxt/.nuxt/
+nuxt/.output/
+nuxt/dist/
+###< nuxt ###
