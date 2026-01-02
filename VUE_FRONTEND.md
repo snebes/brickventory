@@ -48,8 +48,18 @@ A Vue 3-based single-page application (SPA) has been created that provides a use
 
 ### Frontend Stack
 - **Vue 3**: Modern JavaScript framework for building the UI
+- **Vue Router**: Client-side routing for navigation between views
 - **Vanilla JavaScript**: No build step required - uses native ES modules
 - **Symfony Asset Mapper**: Manages frontend assets and importmap
+
+### Architecture
+The Vue application follows best practices with a proper component-based structure:
+- **Components**: Separated into individual `.js` files in `assets/vue/components/`
+- **Router**: Configured in `assets/vue/router.js` using hash-based routing
+- **Main App**: Bootstrapped in `assets/vue/app.js`
+- **Template**: Clean Twig template in `templates/app/index.html.twig` using `<router-view>` and `<router-link>`
+
+This structure resolves the conflict between Vue's `{{ }}` template syntax and Twig's syntax by keeping all Vue component templates in separate JavaScript files.
 
 ### Backend Components
 
@@ -72,13 +82,25 @@ A Vue 3-based single-page application (SPA) has been created that provides a use
    - Used for populating item dropdowns in order forms
 
 ### Templates
-- **templates/app/index.html.twig**: Main SPA template with all Vue components defined inline
+- **templates/app/index.html.twig**: Main SPA template with sidebar navigation and router-view
+- **assets/vue/app.js**: Vue application initialization and router setup
+- **assets/vue/router.js**: Vue Router configuration with route definitions
 
 ### Vue Components
-1. **PurchaseOrdersList**: Displays list of purchase orders with actions
-2. **PurchaseOrderForm**: Form for creating/editing purchase orders
-3. **SalesOrdersList**: Displays list of sales orders with actions
-4. **SalesOrderForm**: Form for creating/editing sales orders
+Components are located in `assets/vue/components/`:
+1. **PurchaseOrdersList.js**: Displays list of purchase orders with actions
+2. **PurchaseOrderForm.js**: Form for creating/editing purchase orders
+3. **SalesOrdersList.js**: Displays list of sales orders with actions
+4. **SalesOrderForm.js**: Form for creating/editing sales orders
+
+### Routing
+The application uses Vue Router with hash-based routing:
+- `/purchase-orders` - List all purchase orders
+- `/purchase-orders/new` - Create new purchase order
+- `/purchase-orders/:id/edit` - Edit existing purchase order
+- `/sales-orders` - List all sales orders
+- `/sales-orders/new` - Create new sales order
+- `/sales-orders/:id/edit` - Edit existing sales order
 
 ## Inventory Integration
 
@@ -190,12 +212,19 @@ Potential improvements:
 
 ## Files Modified
 
-- `importmap.php` - Added Vue 3 to the importmap
+- `importmap.php` - Added Vue 3 and Vue Router to the importmap
+- `assets/app.js` - Import and mount Vue application
+- `assets/vue/app.js` - Vue application initialization
+- `assets/vue/router.js` - Vue Router configuration
+- `assets/vue/components/PurchaseOrdersList.js` - Purchase orders list component
+- `assets/vue/components/PurchaseOrderForm.js` - Purchase order form component
+- `assets/vue/components/SalesOrdersList.js` - Sales orders list component
+- `assets/vue/components/SalesOrderForm.js` - Sales order form component
 - `src/Controller/AppController.php` - Main SPA controller
 - `src/Controller/ItemController.php` - Items API endpoint
 - `src/Controller/PurchaseOrderController.php` - Purchase orders API
 - `src/Controller/SalesOrderController.php` - Sales orders API
-- `templates/app/index.html.twig` - Vue 3 SPA with all components
+- `templates/app/index.html.twig` - Clean Vue 3 SPA template with router
 
 ## Requirements
 
