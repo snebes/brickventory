@@ -23,7 +23,8 @@ const options = {
 
 // Helper function to load .vue components
 const loadComponent = (path) => {
-    return () => loadModule(path, options);
+    // Use absolute path from the assets directory to ensure correct resolution
+    return () => loadModule(`/assets/vue/components/${path}`, options);
 };
 
 const routes = [
@@ -34,32 +35,32 @@ const routes = [
     {
         path: '/purchase-orders',
         name: 'PurchaseOrdersList',
-        component: loadComponent('./components/PurchaseOrdersList.vue')
+        component: loadComponent('PurchaseOrdersList.vue')
     },
     {
         path: '/purchase-orders/new',
         name: 'PurchaseOrderCreate',
-        component: loadComponent('./components/PurchaseOrderForm.vue')
+        component: loadComponent('PurchaseOrderForm.vue')
     },
     {
         path: '/purchase-orders/:id/edit',
         name: 'PurchaseOrderEdit',
-        component: loadComponent('./components/PurchaseOrderForm.vue')
+        component: loadComponent('PurchaseOrderForm.vue')
     },
     {
         path: '/sales-orders',
         name: 'SalesOrdersList',
-        component: loadComponent('./components/SalesOrdersList.vue')
+        component: loadComponent('SalesOrdersList.vue')
     },
     {
         path: '/sales-orders/new',
         name: 'SalesOrderCreate',
-        component: loadComponent('./components/SalesOrderForm.vue')
+        component: loadComponent('SalesOrderForm.vue')
     },
     {
         path: '/sales-orders/:id/edit',
         name: 'SalesOrderEdit',
-        component: loadComponent('./components/SalesOrderForm.vue')
+        component: loadComponent('SalesOrderForm.vue')
     }
 ];
 
