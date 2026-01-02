@@ -90,7 +90,10 @@ watch(() => props.order, (newOrder) => {
     formOrder.value = {
       ...newOrder,
       orderDate: newOrder.orderDate.split('T')[0],
-      lines: newOrder.lines || []
+      lines: (newOrder.lines || []).map(line => ({
+        ...line,
+        itemId: line.item?.id || line.itemId
+      }))
     }
   } else {
     resetForm()
