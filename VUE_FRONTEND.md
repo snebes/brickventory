@@ -79,17 +79,21 @@ The following API endpoints remain unchanged and are still used by the new Nuxt 
 ### Frontend Stack (Legacy)
 - **Vue 3**: Modern JavaScript framework for building the UI
 - **Vue Router**: Client-side routing for navigation between views
-- **Vue3 SFC Loader**: Enabled loading of Single File Components (.vue files) without a build step
-- **Vanilla JavaScript**: No build step required - used native ES modules
-- **Symfony Asset Mapper**: Managed frontend assets and importmap
+- **Vue3 SFC Loader**: Enables loading of Single File Components (.vue files) without a build step
+- **Vanilla JavaScript**: No build step required - uses native ES modules
+- **Symfony Asset Mapper**: Manages frontend assets and importmap
 
-### Architecture (Legacy)
-The Vue application followed best practices with a component-based structure using Single File Components (SFC):
+### Architecture
+The Vue application follows best practices with a proper component-based structure using Single File Components (SFC):
 - **Components**: Separated into `.vue` files in `assets/vue/components/` with `<script setup>` and `<template>` sections
-- **Composition API**: All components used the modern `<script setup>` syntax with Vue 3 Composition API
+- **Composition API**: All components use the modern `<script setup>` syntax with Vue 3 Composition API
 - **Router**: Configured in `assets/vue/router.js` using hash-based routing with vue3-sfc-loader
 - **Main App**: Bootstrapped in `assets/vue/app.js`
 - **Template**: Clean Twig template in `templates/app/index.html.twig` using `<router-view>` and `<router-link>`
+
+This structure resolves the conflict between Vue's `{{ }}` template syntax and Twig's syntax by keeping all Vue component templates in separate `.vue` Single File Component files.
+
+### Backend Components
 
 This structure resolved the conflict between Vue's `{{ }}` template syntax and Twig's syntax by keeping all Vue component templates in separate `.vue` Single File Component files.
 
@@ -110,16 +114,28 @@ This structure resolved the conflict between Vue's `{{ }}` template syntax and T
    - Provides a list of all items with inventory quantities
    - Used for populating item dropdowns in order forms
 
-### Legacy Templates and Components (Removed)
+### Templates
+- **templates/app/index.html.twig**: Main SPA template with sidebar navigation and router-view
+- **assets/vue/app.js**: Vue application initialization and router setup
+- **assets/vue/router.js**: Vue Router configuration with route definitions and vue3-sfc-loader integration
 
-The following files were part of the legacy implementation and have been removed:
-- `templates/app/index.html.twig` - Main SPA template
-- `assets/vue/app.js` - Vue application initialization
-- `assets/vue/router.js` - Vue Router configuration
-- `assets/vue/components/PurchaseOrdersList.vue`
-- `assets/vue/components/PurchaseOrderForm.vue`
-- `assets/vue/components/SalesOrdersList.vue`
-- `assets/vue/components/SalesOrderForm.vue`
+### Vue Components
+Components are located in `assets/vue/components/` as Single File Components (.vue):
+1. **PurchaseOrdersList.vue**: Displays list of purchase orders with actions
+2. **PurchaseOrderForm.vue**: Form for creating/editing purchase orders
+3. **SalesOrdersList.vue**: Displays list of sales orders with actions
+4. **SalesOrderForm.vue**: Form for creating/editing sales orders
+
+Each component uses the modern Vue 3 `<script setup>` syntax with Composition API and `<template>` sections.
+
+### Routing
+The application uses Vue Router with hash-based routing:
+- `/purchase-orders` - List all purchase orders
+- `/purchase-orders/new` - Create new purchase order
+- `/purchase-orders/:id/edit` - Edit existing purchase order
+- `/sales-orders` - List all sales orders
+- `/sales-orders/new` - Create new sales order
+- `/sales-orders/:id/edit` - Edit existing sales order
 
 **These have been replaced by the Nuxt 3 components in the `/nuxt` directory.**
 
@@ -175,13 +191,19 @@ All inventory changes are recorded as immutable events:
 - **Backend simplified** to pure API service on `http://localhost:8000/api`
 - **All Vue/Twig files removed**: `assets/vue/`, `templates/`, `importmap.php`
 
-### Benefits
-- ✅ Full TypeScript support
-- ✅ Hot module replacement
-- ✅ Server-side rendering (SSR)
-- ✅ Better performance and scalability
-- ✅ Modern developer experience
-- ✅ Independent deployment
+- `importmap.php` - Added Vue 3, Vue Router, and Vue3 SFC Loader to the importmap
+- `assets/app.js` - Import and mount Vue application
+- `assets/vue/app.js` - Vue application initialization
+- `assets/vue/router.js` - Vue Router configuration with vue3-sfc-loader
+- `assets/vue/components/PurchaseOrdersList.vue` - Purchase orders list component (SFC)
+- `assets/vue/components/PurchaseOrderForm.vue` - Purchase order form component (SFC)
+- `assets/vue/components/SalesOrdersList.vue` - Sales orders list component (SFC)
+- `assets/vue/components/SalesOrderForm.vue` - Sales order form component (SFC)
+- `src/Controller/AppController.php` - Main SPA controller
+- `src/Controller/ItemController.php` - Items API endpoint
+- `src/Controller/PurchaseOrderController.php` - Purchase orders API
+- `src/Controller/SalesOrderController.php` - Sales orders API
+- `templates/app/index.html.twig` - Clean Vue 3 SPA template with router
 
 ### Getting Started with Nuxt 3
 See [QUICK_START.md](QUICK_START.md) for setup instructions or run:
