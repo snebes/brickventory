@@ -85,12 +85,19 @@ const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 // Watch for modelValue changes to update the display
 watch(() => props.modelValue, async (newValue) => {
   if (newValue && !selectedItem.value) {
-    // Load all items to find the selected one
-    await loadItems('', 1, true)
-    const item = items.value.find(i => i.id === newValue)
-    if (item) {
-      selectedItem.value = item
-      searchQuery.value = `${item.itemId} - ${item.itemName}`
+    // First check if the item is already in the loaded items
+    const existingItem = items.value.find(i => i.id === newValue)
+    if (existingItem) {
+      selectedItem.value = existingItem
+      searchQuery.value = `${existingItem.itemId} - ${existingItem.itemName}`
+    } else {
+      // Load items to find the selected one
+      await loadItems('', 1, true)
+      const item = items.value.find(i => i.id === newValue)
+      if (item) {
+        selectedItem.value = item
+        searchQuery.value = `${item.itemId} - ${item.itemName}`
+      }
     }
   } else if (!newValue) {
     selectedItem.value = null
@@ -196,7 +203,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 }
 
 const scrollToSelected = () => {
-  if (!dropdownRef.value) return
+  if (!dropdownRef.value || selectedIndex.value < 0 || selectedIndex.value >= items.value.length) return
   
   const selectedElement = dropdownRef.value.children[selectedIndex.value] as HTMLElement
   if (selectedElement) {
