@@ -7,7 +7,7 @@
       </button>
     </div>
 
-    <div v-if="!showForm" class="card">
+    <div v-if="!showForm && !showReceiveForm" class="card">
       <table>
         <thead>
           <tr>
@@ -28,6 +28,7 @@
             <td>{{ order.lines?.length || 0 }}</td>
             <td>
               <div class="actions">
+                <button class="btn btn-success btn-small" @click="receiveOrder(order)" :disabled="order.status === 'received'">Receive</button>
                 <button class="btn btn-secondary btn-small" @click="editOrder(order)">Edit</button>
                 <button class="btn btn-danger btn-small" @click="deleteOrder(order.id)">Delete</button>
               </div>
@@ -41,10 +42,17 @@
     </div>
 
     <PurchaseOrdersPurchaseOrderForm 
-      v-else 
+      v-if="showForm" 
       :order="editingOrder" 
       @save="handleSave" 
       @cancel="showForm = false; editingOrder = null" 
+    />
+
+    <ItemReceiptsReceiptForm
+      v-if="showReceiveForm"
+      :purchase-order="receivingOrder"
+      @save="handleReceive"
+      @cancel="showReceiveForm = false; receivingOrder = null"
     />
   </div>
 </template>
@@ -54,6 +62,8 @@ const api = useApi()
 const orders = ref([])
 const showForm = ref(false)
 const editingOrder = ref(null)
+const showReceiveForm = ref(false)
+const receivingOrder = ref(null)
 
 const loadOrders = async () => {
   try {
@@ -68,6 +78,16 @@ const editOrder = async (order: any) => {
     const fullOrder = await api.getPurchaseOrder(order.id)
     editingOrder.value = fullOrder
     showForm.value = true
+  } catch (error) {
+    console.error('Failed to load order:', error)
+  }
+}
+
+const receiveOrder = async (order: any) => {
+  try {
+    const fullOrder = await api.getPurchaseOrder(order.id)
+    receivingOrder.value = fullOrder
+    showReceiveForm.value = true
   } catch (error) {
     console.error('Failed to load order:', error)
   }
@@ -96,6 +116,19 @@ const handleSave = async (order: any) => {
     await loadOrders()
   } catch (error) {
     console.error('Failed to save order:', error)
+  }
+}
+
+const handleReceive = async (receiptData: any) => {
+  try {
+    await api.createItemReceipt(receiptData)
+    showReceiveForm.value = false
+    receivingOrder.value = null
+    await loadOrders()
+    alert('Items received successfully!')
+  } catch (error) {
+    console.error('Failed to receive items:', error)
+    alert('Failed to receive items: ' + (error.message || 'Unknown error'))
   }
 }
 

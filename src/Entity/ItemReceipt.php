@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
@@ -34,9 +36,16 @@ class ItemReceipt
     #[ORM\Column(type: 'string', length: 50)]
     public string $status = 'received';
 
+    /**
+     * @var Collection<int, ItemReceiptLine>
+     */
+    #[ORM\OneToMany(targetEntity: ItemReceiptLine::class, mappedBy: 'itemReceipt', cascade: ['persist', 'remove'])]
+    public Collection $lines;
+
     public function __construct()
     {
         $this->uuid = Ulid::generate();
         $this->receiptDate = new \DateTime();
+        $this->lines = new ArrayCollection();
     }
 }
