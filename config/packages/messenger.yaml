@@ -15,15 +15,26 @@ framework:
             failed: 'doctrine://default?queue_name=failed'
             # sync: 'sync://'
 
-        default_bus: messenger.bus.default
+        default_bus: command.bus
 
         buses:
-            messenger.bus.default: []
+            command.bus:
+                middleware:
+                    - App\Middleware\ValidationMiddleware
+                    - App\Middleware\LoggingMiddleware
+                    - doctrine_transaction
+            
+            query.bus:
+                middleware:
+                    - App\Middleware\LoggingMiddleware
 
         routing:
             Symfony\Component\Mailer\Messenger\SendEmailMessage: async
             Symfony\Component\Notifier\Message\ChatMessage: async
             Symfony\Component\Notifier\Message\SmsMessage: async
 
-            # Route your messages to the transports
-            # 'App\Message\YourMessage': async
+            # Route commands and queries to appropriate buses
+            # Commands are synchronous by default (handled immediately)
+            # Queries are always synchronous
+            'App\Message\Command\*': command.bus
+            'App\Message\Query\*': query.bus
