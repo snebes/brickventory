@@ -113,9 +113,15 @@ class ItemReceiptController extends AbstractController
             return $this->json(['error' => 'At least one receipt line is required'], Response::HTTP_BAD_REQUEST);
         }
 
+        // Begin transaction to prevent race conditions during concurrent receipt creation
+        $this->entityManager->beginTransaction();
+        
+        try {
+
         // Find purchase order
         $purchaseOrder = $this->entityManager->getRepository(PurchaseOrder::class)->find($data['purchaseOrderId']);
         if (!$purchaseOrder) {
+            $this->entityManager->rollback();
             return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
         }
 
@@ -128,22 +134,34 @@ class ItemReceiptController extends AbstractController
 
         // Process receipt lines
         foreach ($data['lines'] as $lineData) {
-            if (empty($lineData['purchaseOrderLineId']) || empty($lineData['quantityReceived'])) {
+            if (!isset($lineData['purchaseOrderLineId']) || !isset($lineData['quantityReceived'])) {
+                $this->entityManager->rollback();
                 return $this->json(['error' => 'Each line must have purchaseOrderLineId and quantityReceived'], Response::HTTP_BAD_REQUEST);
             }
 
-            $poLine = $this->entityManager->getRepository(PurchaseOrderLine::class)->find($lineData['purchaseOrderLineId']);
+            // Use pessimistic locking to prevent concurrent receipt race conditions
+            $poLine = $this->entityManager->getRepository(PurchaseOrderLine::class)
+                ->find($lineData['purchaseOrderLineId'], \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
+                
             if (!$poLine) {
+                $this->entityManager->rollback();
                 return $this->json(['error' => 'Purchase order line not found: ' . $lineData['purchaseOrderLineId']], Response::HTTP_NOT_FOUND);
             }
 
             // Validate quantity
             $quantityReceived = (int)$lineData['quantityReceived'];
+            
+            // Skip lines with zero quantity (allows partial receiving)
+            if ($quantityReceived === 0) {
+                continue;
+            }
+            
             $remainingToReceive = $poLine->quantityOrdered - $poLine->quantityReceived;
             
-            if ($quantityReceived <= 0 || $quantityReceived > $remainingToReceive) {
+            if ($quantityReceived < 0 || $quantityReceived > $remainingToReceive) {
+                $this->entityManager->rollback();
                 return $this->json([
-                    'error' => "Invalid quantity for line {$poLine->item->itemName}. Must be between 1 and {$remainingToReceive}"
+                    'error' => "Invalid quantity for line {$poLine->item->itemName}. Must be between 0 and {$remainingToReceive}"
                 ], Response::HTTP_BAD_REQUEST);
             }
 
@@ -182,12 +200,17 @@ class ItemReceiptController extends AbstractController
 
         $this->entityManager->persist($receipt);
         $this->entityManager->flush();
+        $this->entityManager->commit();
 
         return $this->json([
             'id' => $receipt->id,
             'uuid' => $receipt->uuid,
             'message' => 'Item receipt created successfully'
         ], Response::HTTP_CREATED);
+        } catch (\Exception $e) {
+            $this->entityManager->rollback();
+            throw $e;
+        }
     }
 
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
