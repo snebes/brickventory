@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\ItemReceipt;
+use App\Entity\ItemReceiptLine;
 use App\Entity\PurchaseOrder;
 use App\Entity\PurchaseOrderLine;
 use App\Event\ItemReceivedEvent;
@@ -75,6 +76,7 @@ class ReceiveItemCommand extends Command
         $io->writeln('Enter quantities to receive for each line (or press Enter to skip):');
         $receiptDate = new \DateTime();
         $hasReceipts = false;
+        $receiptLines = [];
 
         foreach ($purchaseOrder->lines as $index => $line) {
             $remaining = $line->quantityOrdered - $line->quantityReceived;
@@ -109,6 +111,12 @@ class ReceiveItemCommand extends Command
             $line->quantityReceived += $quantity;
             $this->entityManager->persist($line);
 
+            // Store receipt line data for later
+            $receiptLines[] = [
+                'line' => $line,
+                'quantity' => $quantity,
+            ];
+
             // Dispatch ItemReceivedEvent (event sourcing)
             $event = new ItemReceivedEvent($line->item, $quantity, $purchaseOrder);
             $this->eventDispatcher->dispatch($event);
@@ -129,6 +137,18 @@ class ReceiveItemCommand extends Command
         $itemReceipt->status = 'received';
         
         $this->entityManager->persist($itemReceipt);
+
+        // Create ItemReceiptLine records
+        foreach ($receiptLines as $receiptLineData) {
+            $receiptLine = new ItemReceiptLine();
+            $receiptLine->itemReceipt = $itemReceipt;
+            $receiptLine->item = $receiptLineData['line']->item;
+            $receiptLine->purchaseOrderLine = $receiptLineData['line'];
+            $receiptLine->quantityReceived = $receiptLineData['quantity'];
+            
+            $itemReceipt->lines->add($receiptLine);
+            $this->entityManager->persist($receiptLine);
+        }
 
         // Update purchase order status if fully received
         $allReceived = true;

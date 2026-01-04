@@ -39,6 +39,17 @@ export const useApi = () => {
       method: 'DELETE'
     }),
     
+    // Item Receipts
+    getItemReceipts: () => fetchAPI('/api/item-receipts'),
+    getItemReceipt: (id: number) => fetchAPI(`/api/item-receipts/${id}`),
+    createItemReceipt: (receipt: any) => fetchAPI('/api/item-receipts', {
+      method: 'POST',
+      body: receipt
+    }),
+    deleteItemReceipt: (id: number) => fetchAPI(`/api/item-receipts/${id}`, {
+      method: 'DELETE'
+    }),
+    
     // Sales Orders
     getSalesOrders: () => fetchAPI('/api/sales-orders'),
     getSalesOrder: (id: number) => fetchAPI(`/api/sales-orders/${id}`),
