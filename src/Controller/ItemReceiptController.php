@@ -126,88 +126,94 @@ class ItemReceiptController extends AbstractController
                 return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
             }
 
-        // Create item receipt
-        $receipt = new ItemReceipt();
-        $receipt->purchaseOrder = $purchaseOrder;
-        $receipt->receiptDate = isset($data['receiptDate']) ? new \DateTime($data['receiptDate']) : new \DateTime();
-        $receipt->notes = $data['notes'] ?? null;
-        $receipt->status = $data['status'] ?? 'received';
+            // Create item receipt
+            $receipt = new ItemReceipt();
+            $receipt->purchaseOrder = $purchaseOrder;
+            $receipt->receiptDate = isset($data['receiptDate']) ? new \DateTime($data['receiptDate']) : new \DateTime();
+            $receipt->notes = $data['notes'] ?? null;
+            $receipt->status = $data['status'] ?? 'received';
 
-        // Process receipt lines
-        foreach ($data['lines'] as $lineData) {
-            if (!isset($lineData['purchaseOrderLineId']) || !isset($lineData['quantityReceived'])) {
-                $this->entityManager->rollback();
-                return $this->json(['error' => 'Each line must have purchaseOrderLineId and quantityReceived'], Response::HTTP_BAD_REQUEST);
-            }
+            // Process receipt lines
+            foreach ($data['lines'] as $lineData) {
+                if (!isset($lineData['purchaseOrderLineId']) || !isset($lineData['quantityReceived'])) {
+                    $this->entityManager->rollback();
+                    return $this->json(['error' => 'Each line must have purchaseOrderLineId and quantityReceived'], Response::HTTP_BAD_REQUEST);
+                }
 
-            // Use pessimistic locking to prevent concurrent receipt race conditions
-            $poLine = $this->entityManager->getRepository(PurchaseOrderLine::class)
-                ->find($lineData['purchaseOrderLineId'], \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
+                // Validate quantity is numeric before processing
+                if (!is_numeric($lineData['quantityReceived'])) {
+                    $this->entityManager->rollback();
+                    return $this->json(['error' => 'Quantity must be numeric'], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Use pessimistic locking to prevent concurrent receipt race conditions
+                $poLine = $this->entityManager->getRepository(PurchaseOrderLine::class)
+                    ->find($lineData['purchaseOrderLineId'], \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
+                    
+                if (!$poLine) {
+                    $this->entityManager->rollback();
+                    return $this->json(['error' => 'Purchase order line not found: ' . $lineData['purchaseOrderLineId']], Response::HTTP_NOT_FOUND);
+                }
+
+                // Validate quantity
+                $quantityReceived = (int)$lineData['quantityReceived'];
                 
-            if (!$poLine) {
-                $this->entityManager->rollback();
-                return $this->json(['error' => 'Purchase order line not found: ' . $lineData['purchaseOrderLineId']], Response::HTTP_NOT_FOUND);
+                // Skip lines with zero quantity (allows partial receiving)
+                if ($quantityReceived === 0) {
+                    continue;
+                }
+                
+                $remainingToReceive = $poLine->quantityOrdered - $poLine->quantityReceived;
+                
+                if ($quantityReceived < 0 || $quantityReceived > $remainingToReceive) {
+                    $this->entityManager->rollback();
+                    return $this->json([
+                        'error' => "Invalid quantity for line {$poLine->item->itemName}. Must be between 0 and {$remainingToReceive}"
+                    ], Response::HTTP_BAD_REQUEST);
+                }
+
+                // Create receipt line
+                $receiptLine = new ItemReceiptLine();
+                $receiptLine->itemReceipt = $receipt;
+                $receiptLine->item = $poLine->item;
+                $receiptLine->purchaseOrderLine = $poLine;
+                $receiptLine->quantityReceived = $quantityReceived;
+                
+                $receipt->lines->add($receiptLine);
+                $this->entityManager->persist($receiptLine);
+
+                // Update purchase order line quantity received
+                $poLine->quantityReceived += $quantityReceived;
+                $this->entityManager->persist($poLine);
+
+                // Dispatch event for inventory update
+                $event = new ItemReceivedEvent($poLine->item, $quantityReceived, $purchaseOrder);
+                $this->eventDispatcher->dispatch($event);
             }
 
-            // Validate quantity
-            $quantityReceived = (int)$lineData['quantityReceived'];
-            
-            // Skip lines with zero quantity (allows partial receiving)
-            if ($quantityReceived === 0) {
-                continue;
-            }
-            
-            $remainingToReceive = $poLine->quantityOrdered - $poLine->quantityReceived;
-            
-            if ($quantityReceived < 0 || $quantityReceived > $remainingToReceive) {
-                $this->entityManager->rollback();
-                return $this->json([
-                    'error' => "Invalid quantity for line {$poLine->item->itemName}. Must be between 0 and {$remainingToReceive}"
-                ], Response::HTTP_BAD_REQUEST);
+            // Update purchase order status if fully received
+            $allReceived = true;
+            foreach ($purchaseOrder->lines as $line) {
+                if ($line->quantityReceived < $line->quantityOrdered) {
+                    $allReceived = false;
+                    break;
+                }
             }
 
-            // Create receipt line
-            $receiptLine = new ItemReceiptLine();
-            $receiptLine->itemReceipt = $receipt;
-            $receiptLine->item = $poLine->item;
-            $receiptLine->purchaseOrderLine = $poLine;
-            $receiptLine->quantityReceived = $quantityReceived;
-            
-            $receipt->lines->add($receiptLine);
-            $this->entityManager->persist($receiptLine);
-
-            // Update purchase order line quantity received
-            $poLine->quantityReceived += $quantityReceived;
-            $this->entityManager->persist($poLine);
-
-            // Dispatch event for inventory update
-            $event = new ItemReceivedEvent($poLine->item, $quantityReceived, $purchaseOrder);
-            $this->eventDispatcher->dispatch($event);
-        }
-
-        // Update purchase order status if fully received
-        $allReceived = true;
-        foreach ($purchaseOrder->lines as $line) {
-            if ($line->quantityReceived < $line->quantityOrdered) {
-                $allReceived = false;
-                break;
+            if ($allReceived) {
+                $purchaseOrder->status = 'received';
+                $this->entityManager->persist($purchaseOrder);
             }
-        }
 
-        if ($allReceived) {
-            $purchaseOrder->status = 'received';
-            $this->entityManager->persist($purchaseOrder);
-        }
+            $this->entityManager->persist($receipt);
+            $this->entityManager->flush();
+            $this->entityManager->commit();
 
-        $this->entityManager->persist($receipt);
-        $this->entityManager->flush();
-        $this->entityManager->commit();
-
-        return $this->json([
-            'id' => $receipt->id,
-            'uuid' => $receipt->uuid,
-            'message' => 'Item receipt created successfully'
-        ], Response::HTTP_CREATED);
+            return $this->json([
+                'id' => $receipt->id,
+                'uuid' => $receipt->uuid,
+                'message' => 'Item receipt created successfully'
+            ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             $this->entityManager->rollback();
             throw $e;

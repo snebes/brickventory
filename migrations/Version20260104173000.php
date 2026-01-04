@@ -23,6 +23,12 @@ final class Version20260104173000 extends AbstractMigration
         // The project is configured for PostgreSQL. For other databases, 
         // adjust the SQL accordingly or use Doctrine schema management.
         
+        // Ensure we're running on PostgreSQL
+        $this->abortIf(
+            !$this->connection->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform,
+            "Migration can only be executed safely on 'postgresql'."
+        );
+        
         // Create item_receipt_line table
         $this->addSql('CREATE TABLE item_receipt_line (
             id SERIAL PRIMARY KEY,
