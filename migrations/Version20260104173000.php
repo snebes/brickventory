@@ -19,6 +19,10 @@ final class Version20260104173000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        // Note: This migration uses PostgreSQL-specific syntax (SERIAL, etc.)
+        // The project is configured for PostgreSQL. For other databases, 
+        // adjust the SQL accordingly or use Doctrine schema management.
+        
         // Create item_receipt_line table
         $this->addSql('CREATE TABLE item_receipt_line (
             id SERIAL PRIMARY KEY,

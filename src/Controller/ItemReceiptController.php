@@ -113,17 +113,18 @@ class ItemReceiptController extends AbstractController
             return $this->json(['error' => 'At least one receipt line is required'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Begin transaction to prevent race conditions during concurrent receipt creation
-        $this->entityManager->beginTransaction();
-        
         try {
+            // Begin transaction to prevent race conditions during concurrent receipt creation
+            $this->entityManager->beginTransaction();
 
-        // Find purchase order
-        $purchaseOrder = $this->entityManager->getRepository(PurchaseOrder::class)->find($data['purchaseOrderId']);
-        if (!$purchaseOrder) {
-            $this->entityManager->rollback();
-            return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
-        }
+            // Find purchase order with pessimistic lock to prevent concurrent status updates
+            $purchaseOrder = $this->entityManager->getRepository(PurchaseOrder::class)
+                ->find($data['purchaseOrderId'], \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
+                
+            if (!$purchaseOrder) {
+                $this->entityManager->rollback();
+                return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
+            }
 
         // Create item receipt
         $receipt = new ItemReceipt();

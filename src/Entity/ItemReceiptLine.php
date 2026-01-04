@@ -36,7 +36,7 @@ class ItemReceiptLine
 
     #[ORM\Column(type: 'integer')]
     #[Validate\GreaterThan(0)]
-    public int $quantityReceived = 0;
+    public int $quantityReceived;
 
     public function __construct()
     {
