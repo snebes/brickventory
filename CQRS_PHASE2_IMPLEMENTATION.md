@@ -87,7 +87,7 @@ Command handlers contain the **business logic** for executing commands.
 
 **Example:**
 ```php
-#[AsMessageHandler]
+#[AsMessageHandler(bus: 'command.bus')]
 final class CreatePurchaseOrderCommandHandler
 {
     public function __invoke(CreatePurchaseOrderCommand $command): int
@@ -140,7 +140,7 @@ Query handlers optimize **data retrieval** for specific use cases.
 
 **Example:**
 ```php
-#[AsMessageHandler]
+#[AsMessageHandler(bus: 'query.bus')]
 final class GetPurchaseOrdersQueryHandler
 {
     public function __invoke(GetPurchaseOrdersQuery $query): array
@@ -270,15 +270,16 @@ framework:
                     - App\Middleware\LoggingMiddleware
         
         routing:
-            'App\Message\Command\*': command.bus
-            'App\Message\Query\*': query.bus
+            # Routing maps messages to transports (async, sync, failed)
+            # Handlers specify which bus to use via the #[AsMessageHandler] attribute
+            Symfony\Component\Mailer\Messenger\SendEmailMessage: async
 ```
 
 **Key Features:**
 - Separate buses for different concerns
 - Command bus has transaction management
 - Query bus is lighter (no transactions needed)
-- Automatic routing based on namespace
+- Handlers are registered to buses via the `bus` parameter in `#[AsMessageHandler(bus: 'command.bus')]`
 
 #### Service Configuration (services.yaml)
 
