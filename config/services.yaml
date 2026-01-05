@@ -23,14 +23,5 @@ services:
     App\:
         resource: '../src/'
 
-    # Alias message buses to their internal Symfony service IDs
-    command.bus:
-        alias: messenger.bus.command.bus
-        public: true
-    
-    query.bus:
-        alias: messenger.bus.query.bus
-        public: true
-
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
