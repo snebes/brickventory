@@ -10,7 +10,7 @@ use App\Message\Query\GetPurchaseOrdersQuery;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-#[AsMessageHandler]
+#[AsMessageHandler(bus: 'query.bus')]
 final class GetPurchaseOrdersQueryHandler
 {
     public function __construct(
