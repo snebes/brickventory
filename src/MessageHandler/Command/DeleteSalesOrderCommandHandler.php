@@ -9,7 +9,7 @@ use App\Message\Command\DeleteSalesOrderCommand;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-#[AsMessageHandler]
+#[AsMessageHandler(bus: 'command.bus')]
 final class DeleteSalesOrderCommandHandler
 {
     public function __construct(

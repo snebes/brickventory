@@ -33,8 +33,6 @@ framework:
             Symfony\Component\Notifier\Message\ChatMessage: async
             Symfony\Component\Notifier\Message\SmsMessage: async
 
-            # Route commands and queries to appropriate buses
-            # Commands are synchronous by default (handled immediately)
-            # Queries are always synchronous
-            'App\Message\Command\*': command.bus
-            'App\Message\Query\*': query.bus
+            # Commands and queries are handled synchronously by default
+            # Handlers are automatically registered to the appropriate bus
+            # via the #[AsMessageHandler] attribute and the bus parameter

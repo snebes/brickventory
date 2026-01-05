@@ -11,7 +11,7 @@ use App\Message\Command\UpdatePurchaseOrderCommand;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-#[AsMessageHandler]
+#[AsMessageHandler(bus: 'command.bus')]
 final class UpdatePurchaseOrderCommandHandler
 {
     public function __construct(
