@@ -147,7 +147,7 @@ class ReceiveItemCommand extends Command
             $receiptLine->quantityReceived = $receiptLineData['quantity'];
             
             $itemReceipt->lines->add($receiptLine);
-            $this->entityManager->persist($receiptLine);
+            // Note: No need to persist - cascade persist from ItemReceipt handles this
         }
 
         // Update purchase order status if fully received

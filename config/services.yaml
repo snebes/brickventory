@@ -23,14 +23,5 @@ services:
     App\:
         resource: '../src/'
 
-    # Explicitly configure message buses for named autowiring
-    command.bus:
-        alias: command.bus
-        public: true
-    
-    query.bus:
-        alias: query.bus
-        public: true
-
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

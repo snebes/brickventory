@@ -180,7 +180,7 @@ class ItemReceiptController extends AbstractController
                 $receiptLine->quantityReceived = $quantityReceived;
                 
                 $receipt->lines->add($receiptLine);
-                $this->entityManager->persist($receiptLine);
+                // Note: No need to persist - cascade persist from ItemReceipt handles this
 
                 // Update purchase order line quantity received
                 $poLine->quantityReceived += $quantityReceived;
