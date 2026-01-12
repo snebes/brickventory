@@ -86,6 +86,18 @@ export const useApi = () => {
     }),
     deleteItem: (id: number) => fetchAPI(`/api/items/${id}`, {
       method: 'DELETE'
-    })
+    }),
+    
+    // Inventory Adjustments
+    getInventoryAdjustments: () => fetchAPI('/api/inventory-adjustments'),
+    getInventoryAdjustment: (id: number) => fetchAPI(`/api/inventory-adjustments/${id}`),
+    createInventoryAdjustment: (adjustment: any) => fetchAPI('/api/inventory-adjustments', {
+      method: 'POST',
+      body: adjustment
+    }),
+    deleteInventoryAdjustment: (id: number) => fetchAPI(`/api/inventory-adjustments/${id}`, {
+      method: 'DELETE'
+    }),
+    getInventoryAdjustmentReasons: () => fetchAPI('/api/inventory-adjustments/reasons')
   }
 }

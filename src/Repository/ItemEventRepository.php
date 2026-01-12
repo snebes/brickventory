@@ -55,6 +55,9 @@ class ItemEventRepository extends ServiceEntityRepository
                 case 'purchase_order_created':
                     $quantityOnOrder += $event->quantityChange;
                     break;
+                case 'inventory_adjusted':
+                    $quantityOnHand += $event->quantityChange; // can be positive or negative
+                    break;
             }
         }
         
