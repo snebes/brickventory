@@ -4,41 +4,66 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Message\Command\CreatePurchaseOrderCommand;
-use App\Message\Command\DeletePurchaseOrderCommand;
-use App\Message\Command\UpdatePurchaseOrderCommand;
-use App\Message\Query\GetPurchaseOrderQuery;
-use App\Message\Query\GetPurchaseOrdersQuery;
+use App\Entity\Item;
+use App\Entity\PurchaseOrder;
+use App\Entity\PurchaseOrderLine;
+use App\Event\PurchaseOrderCreatedEvent;
+use App\Event\PurchaseOrderUpdatedEvent;
+use App\Event\PurchaseOrderDeletedEvent;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/purchase-orders', name: 'api_purchase_orders_')]
 class PurchaseOrderController extends AbstractController
 {
     public function __construct(
-        private readonly MessageBusInterface $commandBus,
-        private readonly MessageBusInterface $queryBus
+        private readonly EntityManagerInterface $entityManager,
+        private readonly EventDispatcherInterface $eventDispatcher
     ) {
     }
 
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-        $query = new GetPurchaseOrdersQuery(
-            status: $request->query->get('status'),
-            orderDateFrom: $request->query->get('orderDateFrom'),
-            orderDateTo: $request->query->get('orderDateTo'),
-            page: (int) $request->query->get('page', 1),
-            perPage: (int) $request->query->get('perPage', 100)
-        );
+        $status = $request->query->get('status');
+        $orderDateFrom = $request->query->get('orderDateFrom');
+        $orderDateTo = $request->query->get('orderDateTo');
+        $page = (int) $request->query->get('page', 1);
+        $perPage = (int) $request->query->get('perPage', 100);
 
-        $envelope = $this->queryBus->dispatch($query);
-        $result = $envelope->last(HandledStamp::class)?->getResult();
+        $qb = $this->entityManager
+            ->getRepository(PurchaseOrder::class)
+            ->createQueryBuilder('po')
+            ->orderBy('po.orderDate', 'DESC');
+
+        if ($status) {
+            $qb->andWhere('po.status = :status')
+               ->setParameter('status', $status);
+        }
+
+        if ($orderDateFrom) {
+            $qb->andWhere('po.orderDate >= :dateFrom')
+               ->setParameter('dateFrom', new \DateTime($orderDateFrom));
+        }
+
+        if ($orderDateTo) {
+            $qb->andWhere('po.orderDate <= :dateTo')
+               ->setParameter('dateTo', new \DateTime($orderDateTo));
+        }
+
+        $qb->setFirstResult(($page - 1) * $perPage)
+           ->setMaxResults($perPage);
+
+        $purchaseOrders = $qb->getQuery()->getResult();
+
+        $result = array_map(function (PurchaseOrder $po) {
+            return $this->serializePurchaseOrder($po);
+        }, $purchaseOrders);
 
         return $this->json($result);
     }
@@ -46,16 +71,13 @@ class PurchaseOrderController extends AbstractController
     #[Route('/{id}', name: 'get', methods: ['GET'])]
     public function get(int $id): JsonResponse
     {
-        $query = new GetPurchaseOrderQuery($id);
+        $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
         
-        $envelope = $this->queryBus->dispatch($query);
-        $result = $envelope->last(HandledStamp::class)?->getResult();
-        
-        if (!$result) {
+        if (!$po) {
             return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
         }
 
-        return $this->json($result);
+        return $this->json($this->serializePurchaseOrder($po));
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
@@ -68,20 +90,38 @@ class PurchaseOrderController extends AbstractController
         }
 
         try {
-            $command = new CreatePurchaseOrderCommand(
-                orderNumber: $data['orderNumber'] ?? null,
-                orderDate: $data['orderDate'] ?? (new \DateTime())->format('Y-m-d H:i:s'),
-                status: $data['status'] ?? 'pending',
-                reference: $data['reference'] ?? null,
-                notes: $data['notes'] ?? null,
-                lines: $data['lines'] ?? []
-            );
+            $po = new PurchaseOrder();
+            $po->orderNumber = $data['orderNumber'] ?? 'PO-' . date('YmdHis');
+            $po->orderDate = new \DateTime($data['orderDate'] ?? 'now');
+            $po->status = $data['status'] ?? 'pending';
+            $po->reference = $data['reference'] ?? null;
+            $po->notes = $data['notes'] ?? null;
 
-            $envelope = $this->commandBus->dispatch($command);
-            $purchaseOrderId = $envelope->last(HandledStamp::class)?->getResult();
+            $lines = $data['lines'] ?? [];
+            foreach ($lines as $lineData) {
+                $item = $this->entityManager->getRepository(Item::class)->find($lineData['itemId']);
+                
+                if (!$item) {
+                    throw new \InvalidArgumentException("Item {$lineData['itemId']} not found");
+                }
+                
+                $line = new PurchaseOrderLine();
+                $line->purchaseOrder = $po;
+                $line->item = $item;
+                $line->quantityOrdered = $lineData['quantityOrdered'];
+                $line->rate = $lineData['rate'];
+                
+                $po->lines->add($line);
+            }
+
+            $this->entityManager->persist($po);
+            $this->entityManager->flush();
+
+            // Dispatch event to update inventory (event sourcing)
+            $this->eventDispatcher->dispatch(new PurchaseOrderCreatedEvent($po));
 
             return $this->json([
-                'id' => $purchaseOrderId,
+                'id' => $po->id,
                 'message' => 'Purchase order created successfully'
             ], Response::HTTP_CREATED);
         } catch (\InvalidArgumentException $e) {
@@ -99,16 +139,49 @@ class PurchaseOrderController extends AbstractController
         }
 
         try {
-            $command = new UpdatePurchaseOrderCommand(
-                id: $id,
-                orderDate: $data['orderDate'],
-                status: $data['status'],
-                reference: $data['reference'] ?? null,
-                notes: $data['notes'] ?? null,
-                lines: $data['lines'] ?? []
-            );
+            $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
+            
+            if (!$po) {
+                throw new \InvalidArgumentException("Purchase order {$id} not found");
+            }
 
-            $this->commandBus->dispatch($command);
+            // Capture previous state for event sourcing
+            $previousState = $this->serializePurchaseOrder($po);
+
+            // Update basic fields
+            $po->orderDate = new \DateTime($data['orderDate']);
+            $po->status = $data['status'];
+            $po->reference = $data['reference'] ?? null;
+            $po->notes = $data['notes'] ?? null;
+
+            // Remove existing lines
+            foreach ($po->lines as $line) {
+                $this->entityManager->remove($line);
+            }
+            $po->lines->clear();
+
+            // Add new lines
+            $lines = $data['lines'] ?? [];
+            foreach ($lines as $lineData) {
+                $item = $this->entityManager->getRepository(Item::class)->find($lineData['itemId']);
+                
+                if (!$item) {
+                    throw new \InvalidArgumentException("Item {$lineData['itemId']} not found");
+                }
+                
+                $line = new PurchaseOrderLine();
+                $line->purchaseOrder = $po;
+                $line->item = $item;
+                $line->quantityOrdered = $lineData['quantityOrdered'];
+                $line->rate = $lineData['rate'];
+                
+                $po->lines->add($line);
+            }
+
+            $this->entityManager->flush();
+
+            // Dispatch event for event sourcing
+            $this->eventDispatcher->dispatch(new PurchaseOrderUpdatedEvent($po, $previousState));
 
             return $this->json([
                 'id' => $id,
@@ -123,12 +196,50 @@ class PurchaseOrderController extends AbstractController
     public function delete(int $id): JsonResponse
     {
         try {
-            $command = new DeletePurchaseOrderCommand($id);
-            $this->commandBus->dispatch($command);
+            $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
+            
+            if (!$po) {
+                throw new \InvalidArgumentException("Purchase order {$id} not found");
+            }
+
+            // Capture state before deletion for event sourcing
+            $orderState = $this->serializePurchaseOrder($po);
+            $orderId = $po->id;
+
+            $this->entityManager->remove($po);
+            $this->entityManager->flush();
+
+            // Dispatch event for event sourcing
+            $this->eventDispatcher->dispatch(new PurchaseOrderDeletedEvent($orderId, $orderState));
 
             return $this->json(['message' => 'Purchase order deleted successfully']);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
         }
+    }
+
+    private function serializePurchaseOrder(PurchaseOrder $po): array
+    {
+        return [
+            'id' => $po->id,
+            'orderNumber' => $po->orderNumber,
+            'orderDate' => $po->orderDate->format('Y-m-d H:i:s'),
+            'status' => $po->status,
+            'reference' => $po->reference,
+            'notes' => $po->notes,
+            'lines' => array_map(function (PurchaseOrderLine $line) {
+                return [
+                    'id' => $line->id,
+                    'item' => [
+                        'id' => $line->item->id,
+                        'itemId' => $line->item->itemId,
+                        'itemName' => $line->item->itemName,
+                    ],
+                    'quantityOrdered' => $line->quantityOrdered,
+                    'quantityReceived' => $line->quantityReceived,
+                    'rate' => $line->rate,
+                ];
+            }, $po->lines->toArray()),
+        ];
     }
 }

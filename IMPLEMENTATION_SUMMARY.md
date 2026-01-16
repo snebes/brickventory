@@ -99,8 +99,7 @@ A complete single-page application (SPA) built with Vue 3 that provides a user-f
 ### Backend
 - **Framework:** Symfony 8.0
 - **PHP Version:** 8.4+
-- **Pattern:** CQRS (Command Query Responsibility Segregation)
-- **Event Sourcing:** Integrated with existing system
+- **Pattern:** Event Sourcing for inventory tracking
 - **API Style:** RESTful JSON
 
 ### Frontend

@@ -15,24 +15,7 @@ framework:
             failed: 'doctrine://default?queue_name=failed'
             # sync: 'sync://'
 
-        default_bus: command.bus
-
-        buses:
-            command.bus:
-                middleware:
-                    - App\Middleware\ValidationMiddleware
-                    - App\Middleware\LoggingMiddleware
-                    - doctrine_transaction
-            
-            query.bus:
-                middleware:
-                    - App\Middleware\LoggingMiddleware
-
         routing:
             Symfony\Component\Mailer\Messenger\SendEmailMessage: async
             Symfony\Component\Notifier\Message\ChatMessage: async
             Symfony\Component\Notifier\Message\SmsMessage: async
-
-            # Commands and queries are handled synchronously by default
-            # Handlers are automatically registered to the appropriate bus
-            # via the #[AsMessageHandler] attribute and the bus parameter

@@ -10,7 +10,7 @@ This document describes the new Purchase Order creation command and its implemen
 
 ## Overview
 
-A Symfony console command has been created to allow users to create purchase orders interactively from the command line. The implementation follows the CQRS (Command Query Responsibility Segregation) design pattern to handle inventory updates.
+A Symfony console command has been created to allow users to create purchase orders interactively from the command line. The implementation uses Event Sourcing to track inventory changes.
 
 ## Usage
 
@@ -77,7 +77,7 @@ Created `src/Command/CreatePurchaseOrderCommand.php`:
 - Creates purchase order with line items
 - Dispatches event after creation
 
-### 3. CQRS Implementation
+### 3. Event Sourcing Implementation
 
 #### Event
 Created `src/Event/PurchaseOrderCreatedEvent.php`:
@@ -107,15 +107,9 @@ php bin/console doctrine:migrations:migrate
 
 ## Architecture Notes
 
-### CQRS and Event Sourcing Patterns
-The implementation uses both CQRS and Event Sourcing patterns:
+### Event Sourcing Pattern
+The implementation uses the Event Sourcing pattern:
 
-**CQRS (Command Query Responsibility Segregation)**:
-1. **Separation of Concerns**: Command creation and inventory updates are decoupled
-2. **Extensibility**: Easy to add more event handlers for other side effects
-3. **Maintainability**: Clear flow of data and events
-
-**Event Sourcing**:
 1. **Event Store**: All inventory changes are recorded as immutable events in the `item_event` table
 2. **Audit Trail**: Complete history of all inventory changes
 3. **State Reconstruction**: Current inventory state can be derived from event history
