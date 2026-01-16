@@ -4,19 +4,24 @@ This document describes the event sourcing pattern implementation for managing i
 
 ## Overview
 
-The system now implements the **Event Sourcing** pattern to track all inventory changes as a series of immutable events. Instead of directly updating inventory quantities, the system records events that represent what happened, and the current state can be derived from these events.
+The system implements the **Event Sourcing** pattern to track all inventory changes as a series of immutable events. Instead of directly updating inventory quantities, the system records events that represent what happened, and the current state can be derived from these events.
 
 ## Key Concepts
 
-### Event Sourcing vs. CQRS
+### Event Sourcing
 
-- **CQRS (Command Query Responsibility Segregation)**: Separates commands (write operations) from queries (read operations)
-- **Event Sourcing**: Stores all changes as a sequence of events, allowing the current state to be reconstructed from the event history
+Event Sourcing stores all changes as a sequence of events, allowing the current state to be reconstructed from the event history. This provides a complete audit trail and enables time-travel queries.
 
-This implementation combines both patterns:
-- Commands trigger business operations (e.g., creating a purchase order, receiving items)
-- Events are stored in an event store (`item_event` table)
-- Event handlers update the current state based on events
+Key benefits:
+- **Audit Trail**: Complete history of all inventory changes
+- **State Reconstruction**: Current state can be rebuilt from events
+- **Time Travel**: Query historical state at any point in time
+- **Debugging**: Trace exactly what happened and when
+
+This implementation uses:
+- Events stored in an event store (`item_event` table)
+- Event handlers that update the current state based on events
+- Domain events dispatched when business operations occur
 
 ## Architecture
 

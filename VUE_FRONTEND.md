@@ -163,12 +163,6 @@ The legacy implementation was accessed at `http://localhost:8000` and provided U
 
 ## Architecture Notes (Still Valid)
 
-### CQRS Pattern
-The implementation follows Command Query Responsibility Segregation (CQRS):
-- **Commands**: Create, Update, Delete operations trigger events
-- **Queries**: Read operations fetch data directly from entities
-- **Events**: Inventory updates are handled by event listeners
-
 ### Event Sourcing
 All inventory changes are recorded as immutable events:
 - Complete audit trail of inventory changes

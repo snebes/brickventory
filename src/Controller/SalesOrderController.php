@@ -4,41 +4,82 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Message\Command\CreateSalesOrderCommand;
-use App\Message\Command\DeleteSalesOrderCommand;
-use App\Message\Command\UpdateSalesOrderCommand;
-use App\Message\Query\GetSalesOrderQuery;
-use App\Message\Query\GetSalesOrdersQuery;
+use App\Entity\Item;
+use App\Entity\SalesOrder;
+use App\Entity\SalesOrderLine;
+use App\Event\SalesOrderCreatedEvent;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/sales-orders', name: 'api_sales_orders_')]
 class SalesOrderController extends AbstractController
 {
     public function __construct(
-        private readonly MessageBusInterface $commandBus,
-        private readonly MessageBusInterface $queryBus
+        private readonly EntityManagerInterface $entityManager,
+        private readonly EventDispatcherInterface $eventDispatcher
     ) {
     }
 
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-        $query = new GetSalesOrdersQuery(
-            status: $request->query->get('status'),
-            orderDateFrom: $request->query->get('orderDateFrom'),
-            orderDateTo: $request->query->get('orderDateTo'),
-            page: (int) $request->query->get('page', 1),
-            perPage: (int) $request->query->get('perPage', 100)
-        );
+        $status = $request->query->get('status');
+        $orderDateFrom = $request->query->get('orderDateFrom');
+        $orderDateTo = $request->query->get('orderDateTo');
+        $page = (int) $request->query->get('page', 1);
+        $perPage = (int) $request->query->get('perPage', 100);
 
-        $envelope = $this->queryBus->dispatch($query);
-        $result = $envelope->last(HandledStamp::class)?->getResult();
+        $qb = $this->entityManager
+            ->getRepository(SalesOrder::class)
+            ->createQueryBuilder('so')
+            ->orderBy('so.orderDate', 'DESC');
+
+        if ($status) {
+            $qb->andWhere('so.status = :status')
+               ->setParameter('status', $status);
+        }
+
+        if ($orderDateFrom) {
+            $qb->andWhere('so.orderDate >= :dateFrom')
+               ->setParameter('dateFrom', new \DateTime($orderDateFrom));
+        }
+
+        if ($orderDateTo) {
+            $qb->andWhere('so.orderDate <= :dateTo')
+               ->setParameter('dateTo', new \DateTime($orderDateTo));
+        }
+
+        $qb->setFirstResult(($page - 1) * $perPage)
+           ->setMaxResults($perPage);
+
+        $salesOrders = $qb->getQuery()->getResult();
+
+        $result = array_map(function (SalesOrder $so) {
+            return [
+                'id' => $so->id,
+                'orderNumber' => $so->orderNumber,
+                'orderDate' => $so->orderDate->format('Y-m-d H:i:s'),
+                'status' => $so->status,
+                'notes' => $so->notes,
+                'lines' => array_map(function (SalesOrderLine $line) {
+                    return [
+                        'id' => $line->id,
+                        'item' => [
+                            'id' => $line->item->id,
+                            'itemId' => $line->item->itemId,
+                            'itemName' => $line->item->itemName,
+                        ],
+                        'quantityOrdered' => $line->quantityOrdered,
+                        'quantityFulfilled' => $line->quantityFulfilled,
+                    ];
+                }, $so->lines->toArray()),
+            ];
+        }, $salesOrders);
 
         return $this->json($result);
     }
@@ -46,16 +87,31 @@ class SalesOrderController extends AbstractController
     #[Route('/{id}', name: 'get', methods: ['GET'])]
     public function get(int $id): JsonResponse
     {
-        $query = new GetSalesOrderQuery($id);
+        $so = $this->entityManager->getRepository(SalesOrder::class)->find($id);
         
-        $envelope = $this->queryBus->dispatch($query);
-        $result = $envelope->last(HandledStamp::class)?->getResult();
-        
-        if (!$result) {
+        if (!$so) {
             return $this->json(['error' => 'Sales order not found'], Response::HTTP_NOT_FOUND);
         }
 
-        return $this->json($result);
+        return $this->json([
+            'id' => $so->id,
+            'orderNumber' => $so->orderNumber,
+            'orderDate' => $so->orderDate->format('Y-m-d H:i:s'),
+            'status' => $so->status,
+            'notes' => $so->notes,
+            'lines' => array_map(function (SalesOrderLine $line) {
+                return [
+                    'id' => $line->id,
+                    'item' => [
+                        'id' => $line->item->id,
+                        'itemId' => $line->item->itemId,
+                        'itemName' => $line->item->itemName,
+                    ],
+                    'quantityOrdered' => $line->quantityOrdered,
+                    'quantityFulfilled' => $line->quantityFulfilled,
+                ];
+            }, $so->lines->toArray()),
+        ]);
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
@@ -68,19 +124,36 @@ class SalesOrderController extends AbstractController
         }
 
         try {
-            $command = new CreateSalesOrderCommand(
-                orderNumber: $data['orderNumber'] ?? null,
-                orderDate: $data['orderDate'] ?? (new \DateTime())->format('Y-m-d H:i:s'),
-                status: $data['status'] ?? 'pending',
-                notes: $data['notes'] ?? null,
-                lines: $data['lines'] ?? []
-            );
+            $so = new SalesOrder();
+            $so->orderNumber = $data['orderNumber'] ?? 'SO-' . date('YmdHis');
+            $so->orderDate = new \DateTime($data['orderDate'] ?? 'now');
+            $so->status = $data['status'] ?? 'pending';
+            $so->notes = $data['notes'] ?? null;
 
-            $envelope = $this->commandBus->dispatch($command);
-            $salesOrderId = $envelope->last(HandledStamp::class)?->getResult();
+            $lines = $data['lines'] ?? [];
+            foreach ($lines as $lineData) {
+                $item = $this->entityManager->getRepository(Item::class)->find($lineData['itemId']);
+                
+                if (!$item) {
+                    throw new \InvalidArgumentException("Item {$lineData['itemId']} not found");
+                }
+                
+                $line = new SalesOrderLine();
+                $line->salesOrder = $so;
+                $line->item = $item;
+                $line->quantityOrdered = $lineData['quantityOrdered'];
+                
+                $so->lines->add($line);
+            }
+
+            $this->entityManager->persist($so);
+            $this->entityManager->flush();
+
+            // Dispatch event to update inventory (event sourcing)
+            $this->eventDispatcher->dispatch(new SalesOrderCreatedEvent($so));
 
             return $this->json([
-                'id' => $salesOrderId,
+                'id' => $so->id,
                 'message' => 'Sales order created successfully'
             ], Response::HTTP_CREATED);
         } catch (\InvalidArgumentException $e) {
@@ -98,15 +171,41 @@ class SalesOrderController extends AbstractController
         }
 
         try {
-            $command = new UpdateSalesOrderCommand(
-                id: $id,
-                orderDate: $data['orderDate'],
-                status: $data['status'],
-                notes: $data['notes'] ?? null,
-                lines: $data['lines'] ?? []
-            );
+            $so = $this->entityManager->getRepository(SalesOrder::class)->find($id);
+            
+            if (!$so) {
+                throw new \InvalidArgumentException("Sales order {$id} not found");
+            }
 
-            $this->commandBus->dispatch($command);
+            // Update basic fields
+            $so->orderDate = new \DateTime($data['orderDate']);
+            $so->status = $data['status'];
+            $so->notes = $data['notes'] ?? null;
+
+            // Remove existing lines
+            foreach ($so->lines as $line) {
+                $this->entityManager->remove($line);
+            }
+            $so->lines->clear();
+
+            // Add new lines
+            $lines = $data['lines'] ?? [];
+            foreach ($lines as $lineData) {
+                $item = $this->entityManager->getRepository(Item::class)->find($lineData['itemId']);
+                
+                if (!$item) {
+                    throw new \InvalidArgumentException("Item {$lineData['itemId']} not found");
+                }
+                
+                $line = new SalesOrderLine();
+                $line->salesOrder = $so;
+                $line->item = $item;
+                $line->quantityOrdered = $lineData['quantityOrdered'];
+                
+                $so->lines->add($line);
+            }
+
+            $this->entityManager->flush();
 
             return $this->json([
                 'id' => $id,
@@ -121,8 +220,14 @@ class SalesOrderController extends AbstractController
     public function delete(int $id): JsonResponse
     {
         try {
-            $command = new DeleteSalesOrderCommand($id);
-            $this->commandBus->dispatch($command);
+            $so = $this->entityManager->getRepository(SalesOrder::class)->find($id);
+            
+            if (!$so) {
+                throw new \InvalidArgumentException("Sales order {$id} not found");
+            }
+
+            $this->entityManager->remove($so);
+            $this->entityManager->flush();
 
             return $this->json(['message' => 'Sales order deleted successfully']);
         } catch (\InvalidArgumentException $e) {
