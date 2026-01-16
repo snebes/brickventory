@@ -8,6 +8,8 @@ use App\Entity\Item;
 use App\Entity\SalesOrder;
 use App\Entity\SalesOrderLine;
 use App\Event\SalesOrderCreatedEvent;
+use App\Event\SalesOrderUpdatedEvent;
+use App\Event\SalesOrderDeletedEvent;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -60,25 +62,7 @@ class SalesOrderController extends AbstractController
         $salesOrders = $qb->getQuery()->getResult();
 
         $result = array_map(function (SalesOrder $so) {
-            return [
-                'id' => $so->id,
-                'orderNumber' => $so->orderNumber,
-                'orderDate' => $so->orderDate->format('Y-m-d H:i:s'),
-                'status' => $so->status,
-                'notes' => $so->notes,
-                'lines' => array_map(function (SalesOrderLine $line) {
-                    return [
-                        'id' => $line->id,
-                        'item' => [
-                            'id' => $line->item->id,
-                            'itemId' => $line->item->itemId,
-                            'itemName' => $line->item->itemName,
-                        ],
-                        'quantityOrdered' => $line->quantityOrdered,
-                        'quantityFulfilled' => $line->quantityFulfilled,
-                    ];
-                }, $so->lines->toArray()),
-            ];
+            return $this->serializeSalesOrder($so);
         }, $salesOrders);
 
         return $this->json($result);
@@ -93,25 +77,7 @@ class SalesOrderController extends AbstractController
             return $this->json(['error' => 'Sales order not found'], Response::HTTP_NOT_FOUND);
         }
 
-        return $this->json([
-            'id' => $so->id,
-            'orderNumber' => $so->orderNumber,
-            'orderDate' => $so->orderDate->format('Y-m-d H:i:s'),
-            'status' => $so->status,
-            'notes' => $so->notes,
-            'lines' => array_map(function (SalesOrderLine $line) {
-                return [
-                    'id' => $line->id,
-                    'item' => [
-                        'id' => $line->item->id,
-                        'itemId' => $line->item->itemId,
-                        'itemName' => $line->item->itemName,
-                    ],
-                    'quantityOrdered' => $line->quantityOrdered,
-                    'quantityFulfilled' => $line->quantityFulfilled,
-                ];
-            }, $so->lines->toArray()),
-        ]);
+        return $this->json($this->serializeSalesOrder($so));
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
@@ -177,6 +143,9 @@ class SalesOrderController extends AbstractController
                 throw new \InvalidArgumentException("Sales order {$id} not found");
             }
 
+            // Capture previous state for event sourcing
+            $previousState = $this->serializeSalesOrder($so);
+
             // Update basic fields
             $so->orderDate = new \DateTime($data['orderDate']);
             $so->status = $data['status'];
@@ -207,6 +176,9 @@ class SalesOrderController extends AbstractController
 
             $this->entityManager->flush();
 
+            // Dispatch event for event sourcing
+            $this->eventDispatcher->dispatch(new SalesOrderUpdatedEvent($so, $previousState));
+
             return $this->json([
                 'id' => $id,
                 'message' => 'Sales order updated successfully'
@@ -226,13 +198,43 @@ class SalesOrderController extends AbstractController
                 throw new \InvalidArgumentException("Sales order {$id} not found");
             }
 
+            // Capture state before deletion for event sourcing
+            $orderState = $this->serializeSalesOrder($so);
+            $orderId = $so->id;
+
             $this->entityManager->remove($so);
             $this->entityManager->flush();
+
+            // Dispatch event for event sourcing
+            $this->eventDispatcher->dispatch(new SalesOrderDeletedEvent($orderId, $orderState));
 
             return $this->json(['message' => 'Sales order deleted successfully']);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
         }
+    }
+
+    private function serializeSalesOrder(SalesOrder $so): array
+    {
+        return [
+            'id' => $so->id,
+            'orderNumber' => $so->orderNumber,
+            'orderDate' => $so->orderDate->format('Y-m-d H:i:s'),
+            'status' => $so->status,
+            'notes' => $so->notes,
+            'lines' => array_map(function (SalesOrderLine $line) {
+                return [
+                    'id' => $line->id,
+                    'item' => [
+                        'id' => $line->item->id,
+                        'itemId' => $line->item->itemId,
+                        'itemName' => $line->item->itemName,
+                    ],
+                    'quantityOrdered' => $line->quantityOrdered,
+                    'quantityFulfilled' => $line->quantityFulfilled,
+                ];
+            }, $so->lines->toArray()),
+        ];
     }
 }
 
