@@ -69,6 +69,8 @@
 </template>
 
 <script setup lang="ts">
+import { parseApiDateForInput } from '~/utils/dateUtils'
+
 const props = defineProps<{
   order?: any
 }>()
@@ -78,7 +80,7 @@ const emit = defineEmits(['save', 'cancel'])
 const formOrder = ref({
   id: null,
   orderNumber: '',
-  orderDate: new Date().toISOString().split('T')[0],
+  orderDate: parseApiDateForInput(null),
   status: 'pending',
   reference: '',
   notes: '',
@@ -89,7 +91,7 @@ const resetForm = () => {
   formOrder.value = {
     id: null,
     orderNumber: '',
-    orderDate: new Date().toISOString().split('T')[0],
+    orderDate: parseApiDateForInput(null),
     status: 'pending',
     reference: '',
     notes: '',
@@ -101,7 +103,7 @@ watch(() => props.order, (newOrder) => {
   if (newOrder) {
     formOrder.value = {
       ...newOrder,
-      orderDate: newOrder.orderDate ? newOrder.orderDate.split(' ')[0] : new Date().toISOString().split('T')[0],
+      orderDate: parseApiDateForInput(newOrder.orderDate),
       status: newOrder.status || 'pending',
       lines: (newOrder.lines || []).map(line => ({
         ...line,
