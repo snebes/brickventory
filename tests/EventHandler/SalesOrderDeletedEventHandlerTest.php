@@ -212,10 +212,10 @@ class SalesOrderDeletedEventHandlerTest extends TestCase
         $item->quantityAvailable = 85;
         $item->quantityBackOrdered = 5;
 
-        // Most recent ItemEvent from the last update (not the original create)
+        // Most recent ItemEvent from the last update (this is the event that needs to be reversed)
         $mostRecentItemEvent = new ItemEvent();
         $mostRecentItemEvent->item = $item;
-        $mostRecentItemEvent->eventType = 'sales_order_updated'; // From a previous update
+        $mostRecentItemEvent->eventType = 'sales_order_updated'; // eventType indicates this order was previously updated
         $mostRecentItemEvent->quantityChange = -20;
         $mostRecentItemEvent->metadata = json_encode([
             'order_number' => 'SO-TEST-003',
