@@ -50,19 +50,30 @@ class SalesOrderUpdatedEventHandler
                     continue;
                 }
                 
-                // Find the original ItemEvent for this sales order to get committed/backordered quantities
-                $originalEvent = $this->entityManager->getRepository(ItemEvent::class)->findOneBy([
-                    'item' => $item,
-                    'referenceType' => 'sales_order',
-                    'referenceId' => $salesOrder->id,
-                    'eventType' => 'sales_order_created',
-                ]);
+                // Find the most recent ItemEvent for this sales order to get current committed/backordered quantities
+                // This could be either 'sales_order_created' or 'sales_order_updated' depending on whether
+                // the order has been updated before. We need to reverse the most recent quantities.
+                $mostRecentEvent = $this->entityManager->getRepository(ItemEvent::class)
+                    ->createQueryBuilder('e')
+                    ->where('e.item = :item')
+                    ->andWhere('e.referenceType = :refType')
+                    ->andWhere('e.referenceId = :refId')
+                    ->andWhere('e.eventType IN (:eventTypes)')
+                    ->setParameter('item', $item)
+                    ->setParameter('refType', 'sales_order')
+                    ->setParameter('refId', $salesOrder->id)
+                    ->setParameter('eventTypes', ['sales_order_created', 'sales_order_updated'])
+                    ->orderBy('e.eventDate', 'DESC')
+                    ->addOrderBy('e.id', 'DESC')
+                    ->setMaxResults(1)
+                    ->getQuery()
+                    ->getOneOrNullResult();
                 
                 $quantityToCommit = 0;
                 $quantityToBackorder = 0;
                 
-                if ($originalEvent && $originalEvent->metadata) {
-                    $metadata = json_decode($originalEvent->metadata, true);
+                if ($mostRecentEvent && $mostRecentEvent->metadata) {
+                    $metadata = json_decode($mostRecentEvent->metadata, true);
                     $quantityToCommit = $metadata['quantity_committed'] ?? 0;
                     $quantityToBackorder = $metadata['quantity_backordered'] ?? 0;
                 } else {

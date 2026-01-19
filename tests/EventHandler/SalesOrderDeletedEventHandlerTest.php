@@ -9,8 +9,10 @@ use App\Entity\ItemEvent;
 use App\Entity\OrderEvent;
 use App\Event\SalesOrderDeletedEvent;
 use App\EventHandler\SalesOrderDeletedEventHandler;
+use Doctrine\ORM\AbstractQuery;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use PHPUnit\Framework\TestCase;
 
 class SalesOrderDeletedEventHandlerTest extends TestCase
@@ -24,6 +26,26 @@ class SalesOrderDeletedEventHandlerTest extends TestCase
         $this->handler = new SalesOrderDeletedEventHandler($this->entityManager);
     }
 
+    /**
+     * Creates a mock QueryBuilder that returns the given result from getOneOrNullResult
+     */
+    private function createQueryBuilderMock(?ItemEvent $result): QueryBuilder
+    {
+        $query = $this->createMock(AbstractQuery::class);
+        $query->method('getOneOrNullResult')->willReturn($result);
+
+        $queryBuilder = $this->createMock(QueryBuilder::class);
+        $queryBuilder->method('where')->willReturnSelf();
+        $queryBuilder->method('andWhere')->willReturnSelf();
+        $queryBuilder->method('setParameter')->willReturnSelf();
+        $queryBuilder->method('orderBy')->willReturnSelf();
+        $queryBuilder->method('addOrderBy')->willReturnSelf();
+        $queryBuilder->method('setMaxResults')->willReturnSelf();
+        $queryBuilder->method('getQuery')->willReturn($query);
+
+        return $queryBuilder;
+    }
+
     public function testSalesOrderDeletedReversesInventoryChanges(): void
     {
         // Arrange
@@ -33,12 +55,12 @@ class SalesOrderDeletedEventHandlerTest extends TestCase
         $item->quantityAvailable = 70;
         $item->quantityBackOrdered = 10;
 
-        // The original ItemEvent that recorded the commitment
-        $originalItemEvent = new ItemEvent();
-        $originalItemEvent->item = $item;
-        $originalItemEvent->eventType = 'sales_order_created';
-        $originalItemEvent->quantityChange = -40;
-        $originalItemEvent->metadata = json_encode([
+        // The most recent ItemEvent that recorded the commitment
+        $mostRecentItemEvent = new ItemEvent();
+        $mostRecentItemEvent->item = $item;
+        $mostRecentItemEvent->eventType = 'sales_order_created';
+        $mostRecentItemEvent->quantityChange = -40;
+        $mostRecentItemEvent->metadata = json_encode([
             'order_number' => 'SO-TEST-001',
             'quantity_committed' => 30,
             'quantity_backordered' => 10,
@@ -66,8 +88,8 @@ class SalesOrderDeletedEventHandlerTest extends TestCase
 
         $itemEventRepository = $this->createMock(EntityRepository::class);
         $itemEventRepository
-            ->method('findOneBy')
-            ->willReturn($originalItemEvent);
+            ->method('createQueryBuilder')
+            ->willReturn($this->createQueryBuilderMock($mostRecentItemEvent));
 
         $this->entityManager
             ->method('getRepository')
@@ -112,19 +134,19 @@ class SalesOrderDeletedEventHandlerTest extends TestCase
 
     public function testSalesOrderDeletedWithFallbackWhenNoMetadata(): void
     {
-        // Arrange - test fallback behavior when original event has no metadata
+        // Arrange - test fallback behavior when most recent event has no metadata
         $item = new Item();
         $item->quantityOnHand = 50;
         $item->quantityCommitted = 25;
         $item->quantityAvailable = 25;
         $item->quantityBackOrdered = 0;
 
-        // Original ItemEvent without metadata (old format)
-        $originalItemEvent = new ItemEvent();
-        $originalItemEvent->item = $item;
-        $originalItemEvent->eventType = 'sales_order_created';
-        $originalItemEvent->quantityChange = -25;
-        $originalItemEvent->metadata = null; // No metadata
+        // Most recent ItemEvent without metadata (old format)
+        $mostRecentItemEvent = new ItemEvent();
+        $mostRecentItemEvent->item = $item;
+        $mostRecentItemEvent->eventType = 'sales_order_created';
+        $mostRecentItemEvent->quantityChange = -25;
+        $mostRecentItemEvent->metadata = null; // No metadata
 
         $orderState = [
             'id' => 2,
@@ -147,8 +169,8 @@ class SalesOrderDeletedEventHandlerTest extends TestCase
 
         $itemEventRepository = $this->createMock(EntityRepository::class);
         $itemEventRepository
-            ->method('findOneBy')
-            ->willReturn($originalItemEvent);
+            ->method('createQueryBuilder')
+            ->willReturn($this->createQueryBuilderMock($mostRecentItemEvent));
 
         $this->entityManager
             ->method('getRepository')
@@ -176,5 +198,80 @@ class SalesOrderDeletedEventHandlerTest extends TestCase
         $this->assertEquals(0, $item->quantityCommitted); // 25 - 25 = 0
         $this->assertEquals(50, $item->quantityAvailable); // 50 - 0 = 50
         $this->assertEquals(0, $item->quantityBackOrdered); // No backorder to reverse
+    }
+
+    public function testSalesOrderDeletedAfterUpdateReversesCorrectQuantities(): void
+    {
+        // This test verifies that when an order that has been updated is deleted,
+        // the handler correctly reverses the most recent committed/backordered quantities.
+        
+        // Arrange - item state after order was updated
+        $item = new Item();
+        $item->quantityOnHand = 100;
+        $item->quantityCommitted = 15;
+        $item->quantityAvailable = 85;
+        $item->quantityBackOrdered = 5;
+
+        // Most recent ItemEvent from the last update (this is the event that needs to be reversed)
+        $mostRecentItemEvent = new ItemEvent();
+        $mostRecentItemEvent->item = $item;
+        $mostRecentItemEvent->eventType = 'sales_order_updated'; // eventType indicates this order was previously updated
+        $mostRecentItemEvent->quantityChange = -20;
+        $mostRecentItemEvent->metadata = json_encode([
+            'order_number' => 'SO-TEST-003',
+            'quantity_committed' => 15,
+            'quantity_backordered' => 5,
+        ]);
+
+        $orderState = [
+            'id' => 3,
+            'orderNumber' => 'SO-TEST-003',
+            'lines' => [
+                [
+                    'item' => ['id' => 1],
+                    'quantityOrdered' => 20,
+                ],
+            ],
+        ];
+
+        $event = new SalesOrderDeletedEvent(3, $orderState);
+
+        // Setup repository mocks
+        $itemRepository = $this->createMock(EntityRepository::class);
+        $itemRepository
+            ->method('find')
+            ->willReturn($item);
+
+        $itemEventRepository = $this->createMock(EntityRepository::class);
+        $itemEventRepository
+            ->method('createQueryBuilder')
+            ->willReturn($this->createQueryBuilderMock($mostRecentItemEvent));
+
+        $this->entityManager
+            ->method('getRepository')
+            ->willReturnCallback(function ($class) use ($itemRepository, $itemEventRepository) {
+                if ($class === Item::class) {
+                    return $itemRepository;
+                }
+                if ($class === ItemEvent::class) {
+                    return $itemEventRepository;
+                }
+                return $this->createMock(EntityRepository::class);
+            });
+
+        $this->entityManager
+            ->method('persist');
+
+        $this->entityManager
+            ->expects($this->once())
+            ->method('flush');
+
+        // Act
+        ($this->handler)($event);
+
+        // Assert - should reverse the updated quantities, not the original
+        $this->assertEquals(0, $item->quantityCommitted); // 15 - 15 = 0
+        $this->assertEquals(100, $item->quantityAvailable); // 100 - 0 = 100
+        $this->assertEquals(0, $item->quantityBackOrdered); // 5 - 5 = 0
     }
 }
