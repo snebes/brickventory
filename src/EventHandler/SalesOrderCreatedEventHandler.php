@@ -36,24 +36,47 @@ class SalesOrderCreatedEventHandler
         $this->entityManager->persist($orderEvent);
 
         // Update inventory for each line item using event sourcing
+        // Following Netsuite sales order logic:
+        // - If ordered quantity <= available, commit the full quantity
+        // - If ordered quantity > available, commit what's available and backorder the rest
         foreach ($salesOrder->lines as $line) {
             $item = $line->item;
+            $quantityOrdered = $line->quantityOrdered;
+            
+            // Calculate how much can be committed vs backordered
+            // Use current quantityAvailable (before this order's adjustments)
+            $currentAvailable = max(0, $item->quantityAvailable);
+            
+            if ($quantityOrdered <= $currentAvailable) {
+                // Full quantity can be committed
+                $quantityToCommit = $quantityOrdered;
+                $quantityToBackorder = 0;
+            } else {
+                // Partial commitment, rest goes to backorder
+                $quantityToCommit = $currentAvailable;
+                $quantityToBackorder = $quantityOrdered - $currentAvailable;
+            }
             
             // Create event in event store for item inventory
             $itemEvent = new ItemEvent();
             $itemEvent->item = $item;
             $itemEvent->eventType = 'sales_order_created';
-            $itemEvent->quantityChange = -$line->quantityOrdered; // Negative because it's committed
+            $itemEvent->quantityChange = -$quantityOrdered; // Negative because it's committed/backordered
             $itemEvent->referenceType = 'sales_order';
             $itemEvent->referenceId = $salesOrder->id;
             $itemEvent->metadata = json_encode([
                 'order_number' => $salesOrder->orderNumber,
+                'quantity_committed' => $quantityToCommit,
+                'quantity_backordered' => $quantityToBackorder,
             ]);
             
             $this->entityManager->persist($itemEvent);
             
             // Update quantityCommitted when a sales order is created
-            $item->quantityCommitted += $line->quantityOrdered;
+            $item->quantityCommitted += $quantityToCommit;
+            
+            // Update quantityBackOrdered if order exceeds available
+            $item->quantityBackOrdered += $quantityToBackorder;
             
             // Recalculate quantityAvailable
             // quantityAvailable = quantityOnHand - quantityCommitted
