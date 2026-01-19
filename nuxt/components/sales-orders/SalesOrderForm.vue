@@ -47,11 +47,10 @@
               v-model.number="line.quantityOrdered" 
               type="number" 
               min="1" 
-              :max="getAvailableQty(line.itemId)"
               required 
             />
-            <span v-if="getAvailableQty(line.itemId)" class="error" style="font-size: 12px;">
-              Max: {{ getAvailableQty(line.itemId) }}
+            <span v-if="getAvailableQty(line.itemId) !== undefined" style="font-size: 12px; color: #666;">
+              Available: {{ getAvailableQty(line.itemId) }}
             </span>
           </div>
           
@@ -130,10 +129,6 @@ const getAvailableQty = (itemId: any) => {
 
 const updateAvailableQty = (line: any, item: any) => {
   line.availableQty = item.quantityAvailable || 0
-  const maxQty = line.availableQty
-  if (line.quantityOrdered > maxQty) {
-    line.quantityOrdered = maxQty
-  }
 }
 
 const save = () => {
