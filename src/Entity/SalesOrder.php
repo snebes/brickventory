@@ -44,6 +44,7 @@ class SalesOrder
     public function __construct()
     {
         $this->uuid = Ulid::generate();
+        $this->orderNumber = 'SO-' . date('YmdHis') . '-' . substr((string) microtime(true), -4);
         $this->orderDate = new \DateTime();
         $this->lines = new ArrayCollection();
     }

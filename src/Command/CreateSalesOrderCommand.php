@@ -41,12 +41,8 @@ class CreateSalesOrderCommand extends Command
         $notesQuestion = new Question('Enter customer notes (optional): ');
         $notes = $helper->ask($input, $output, $notesQuestion);
 
-        // Generate order number (using timestamp for uniqueness)
-        $orderNumber = 'SO-' . date('YmdHis');
-
-        // Create the sales order
+        // Create the sales order (order number auto-generated in constructor)
         $salesOrder = new SalesOrder();
-        $salesOrder->orderNumber = $orderNumber;
         $salesOrder->orderDate = new \DateTime();
         $salesOrder->status = 'pending';
         $salesOrder->notes = $notes;
@@ -125,7 +121,7 @@ class CreateSalesOrderCommand extends Command
 
         $io->success([
             'Sales Order created successfully!',
-            "Order Number: {$orderNumber}",
+            "Order Number: {$salesOrder->orderNumber}",
             "Total Lines: " . $salesOrder->lines->count()
         ]);
 
