@@ -3,7 +3,8 @@
     <div class="sidebar">
       <h1>Brickventory</h1>
       <nav>
-        <NuxtLink to="/" exact-active-class="active">Purchase Orders</NuxtLink>
+        <NuxtLink to="/" exact-active-class="active">Dashboard</NuxtLink>
+        <NuxtLink to="/purchase-orders" exact-active-class="active">Purchase Orders</NuxtLink>
         <NuxtLink to="/item-receipts" exact-active-class="active">Item Receipts</NuxtLink>
         <NuxtLink to="/inventory-adjustments" exact-active-class="active">Inventory Adjustments</NuxtLink>
         <NuxtLink to="/sales-orders" exact-active-class="active">Sales Orders</NuxtLink>

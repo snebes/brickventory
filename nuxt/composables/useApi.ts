@@ -24,6 +24,9 @@ export const useApi = () => {
   }
   
   return {
+    // Dashboard
+    getDashboardMetrics: () => fetchAPI('/api/dashboard'),
+    
     // Purchase Orders
     getPurchaseOrders: () => fetchAPI('/api/purchase-orders'),
     getPurchaseOrder: (id: number) => fetchAPI(`/api/purchase-orders/${id}`),
