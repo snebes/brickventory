@@ -100,7 +100,8 @@ watch(() => props.order, (newOrder) => {
   if (newOrder) {
     formOrder.value = {
       ...newOrder,
-      orderDate: newOrder.orderDate.split('T')[0],
+      orderDate: newOrder.orderDate ? newOrder.orderDate.split(' ')[0] : new Date().toISOString().split('T')[0],
+      status: newOrder.status || 'pending',
       lines: (newOrder.lines || []).map(line => ({
         ...line,
         itemId: line.item?.id || line.itemId
