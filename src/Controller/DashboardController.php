@@ -17,8 +17,11 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/dashboard', name: 'api_dashboard_')]
 class DashboardController extends AbstractController
 {
+    // Default valuation rate per unit (placeholder - should be replaced with actual item costs)
+    private const DEFAULT_UNIT_VALUATION_RATE = 10.0;
+
     public function __construct(
-        private EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager
     ) {
     }
 
@@ -82,8 +85,8 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
 
-        // Calculate inventory valuation (simple: $10 per unit as placeholder)
-        $inventoryValuation = ((int) ($inventoryStats['totalOnHand'] ?? 0)) * 10.0;
+        // Calculate inventory valuation (using default rate - should be replaced with actual costs)
+        $inventoryValuation = ((int) ($inventoryStats['totalOnHand'] ?? 0)) * self::DEFAULT_UNIT_VALUATION_RATE;
 
         return $this->json([
             'items' => [
