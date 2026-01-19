@@ -52,7 +52,7 @@ class ItemReceivedEventHandler
         $costLayer->quantityReceived = $quantity;
         $costLayer->quantityRemaining = $quantity;
         $costLayer->unitCost = $unitCost;
-        $costLayer->receiptDate = new \DateTime();
+        // receiptDate is set in CostLayer constructor
 
         $this->entityManager->persist($costLayer);
 

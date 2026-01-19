@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\EventHandler;
 
+use App\Entity\Item;
 use App\Entity\ItemEvent;
 use App\Event\ItemFulfilledEvent;
 use App\Repository\CostLayerRepository;
@@ -67,11 +68,11 @@ class ItemFulfilledEventHandler
     /**
      * Consume cost layers in FIFO order and return total cost of goods sold
      * 
-     * @param \App\Entity\Item $item
+     * @param Item $item
      * @param int $quantity
      * @return array{totalCost: float, layersConsumed: array<array{layerId: int, quantity: int, cost: float}>}
      */
-    private function consumeCostLayers($item, int $quantity): array
+    private function consumeCostLayers(Item $item, int $quantity): array
     {
         $costLayers = $this->costLayerRepository->findAvailableByItem($item);
         $remainingQuantity = $quantity;
