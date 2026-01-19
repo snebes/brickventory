@@ -29,7 +29,7 @@ services:
     volumes:
       - ./nuxt:/app:rw
     environment:
-      - NUXT_PUBLIC_API_BASE=http://localhost:8000
+      - NUXT_API_BASE=http://host.docker.internal:8000
     depends_on:
       - database
 ###< nuxt frontend ###
