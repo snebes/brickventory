@@ -91,7 +91,9 @@ class SalesOrderController extends AbstractController
 
         try {
             $so = new SalesOrder();
-            $so->orderNumber = $data['orderNumber'] ?? 'SO-' . date('YmdHis');
+            if (!empty($data['orderNumber'])) {
+                $so->orderNumber = $data['orderNumber'];
+            }
             $so->orderDate = new \DateTime($data['orderDate'] ?? 'now');
             $so->status = $data['status'] ?? 'pending';
             $so->notes = $data['notes'] ?? null;

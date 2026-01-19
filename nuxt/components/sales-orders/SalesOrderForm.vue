@@ -4,8 +4,15 @@
     
     <form @submit.prevent="save">
       <div class="form-group">
-        <label>Order Number (optional)</label>
-        <input v-model="formOrder.orderNumber" type="text" placeholder="Auto-generated if left empty" />
+        <label>Order Number</label>
+        <input 
+          v-model="formOrder.orderNumber" 
+          type="text" 
+          placeholder="Auto-generated" 
+          :readonly="!!formOrder.id"
+          :disabled="!formOrder.id"
+        />
+        <small v-if="!formOrder.id" style="color: #666;">Will be auto-generated when saved</small>
       </div>
       
       <div class="form-group">
