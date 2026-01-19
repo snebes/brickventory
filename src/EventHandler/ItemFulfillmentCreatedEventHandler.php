@@ -161,7 +161,7 @@ class ItemFulfillmentCreatedEventHandler
             'fulfillmentNumber' => $fulfillment->fulfillmentNumber,
             'salesOrderId' => $fulfillment->salesOrder->id,
             'salesOrderNumber' => $fulfillment->salesOrder->orderNumber,
-            'fulfillmentDate' => $fulfillment->fulfillmentDate->format('Y-m-d H:i:s'),
+            'fulfillmentDate' => $fulfillment->fulfillmentDate?->format('Y-m-d H:i:s'),
             'status' => $fulfillment->status,
             'shipMethod' => $fulfillment->shipMethod,
             'trackingNumber' => $fulfillment->trackingNumber,

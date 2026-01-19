@@ -265,6 +265,9 @@ class ItemFulfillmentController extends AbstractController
 
     /**
      * List pending fulfillments (not yet shipped).
+     * 
+     * Note: priority: 1 ensures this route is matched before the /{id} route pattern,
+     * preventing "pending" from being interpreted as an ID parameter.
      */
     #[Route('/pending', name: 'pending', methods: ['GET'], priority: 1)]
     public function pending(Request $request): JsonResponse

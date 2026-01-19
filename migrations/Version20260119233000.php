@@ -12,6 +12,8 @@ use Doctrine\Migrations\AbstractMigration;
  * - Add fulfillment_number, ship_method, tracking_number, shipping_cost, shipped_at to item_fulfillment
  * - Add quantity_committed, quantity_billed to sales_order_line  
  * - Create item_fulfillment_line table for line-level fulfillment tracking
+ * 
+ * Note: This migration uses PostgreSQL-specific syntax consistent with other migrations in this project.
  */
 final class Version20260119233000 extends AbstractMigration
 {
@@ -29,8 +31,9 @@ final class Version20260119233000 extends AbstractMigration
         $this->addSql('ALTER TABLE item_fulfillment ADD COLUMN shipping_cost DECIMAL(10, 2) DEFAULT NULL');
         $this->addSql('ALTER TABLE item_fulfillment ADD COLUMN shipped_at TIMESTAMP DEFAULT NULL');
         
-        // Update existing records with fulfillment numbers
-        $this->addSql("UPDATE item_fulfillment SET fulfillment_number = 'IF-' || id || '-' || EXTRACT(EPOCH FROM fulfillment_date)::INTEGER WHERE fulfillment_number IS NULL");
+        // Update existing records with fulfillment numbers using PostgreSQL syntax
+        // Uses CONCAT and EXTRACT functions for PostgreSQL compatibility
+        $this->addSql("UPDATE item_fulfillment SET fulfillment_number = CONCAT('IF-', id, '-', EXTRACT(EPOCH FROM fulfillment_date)::BIGINT) WHERE fulfillment_number IS NULL");
         
         // Make fulfillment_number NOT NULL after populating existing records
         $this->addSql('ALTER TABLE item_fulfillment ALTER COLUMN fulfillment_number SET NOT NULL');
