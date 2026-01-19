@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Entity\Item;
+use App\Entity\ItemReceiptLine;
 use App\Entity\PurchaseOrder;
 
 /**
@@ -15,7 +16,9 @@ class ItemReceivedEvent
     public function __construct(
         private readonly Item $item,
         private readonly int $quantity,
-        private readonly PurchaseOrder $purchaseOrder
+        private readonly PurchaseOrder $purchaseOrder,
+        private readonly float $unitCost = 0.0,
+        private readonly ?ItemReceiptLine $itemReceiptLine = null
     ) {
     }
 
@@ -32,5 +35,15 @@ class ItemReceivedEvent
     public function getPurchaseOrder(): PurchaseOrder
     {
         return $this->purchaseOrder;
+    }
+
+    public function getUnitCost(): float
+    {
+        return $this->unitCost;
+    }
+
+    public function getItemReceiptLine(): ?ItemReceiptLine
+    {
+        return $this->itemReceiptLine;
     }
 }
