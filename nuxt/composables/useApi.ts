@@ -100,6 +100,13 @@ export const useApi = () => {
     deleteInventoryAdjustment: (id: number) => fetchAPI(`/api/inventory-adjustments/${id}`, {
       method: 'DELETE'
     }),
-    getInventoryAdjustmentReasons: () => fetchAPI('/api/inventory-adjustments/reasons')
+    getInventoryAdjustmentReasons: () => fetchAPI('/api/inventory-adjustments/reasons'),
+    
+    // Reports
+    getBackorderedItemsReport: () => fetchAPI('/api/reports/backordered-items/json'),
+    downloadBackorderedItemsCsv: () => {
+      const config = useRuntimeConfig()
+      window.open(`${config.public.apiBase}/api/reports/backordered-items`, '_blank')
+    }
   }
 }
