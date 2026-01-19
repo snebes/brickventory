@@ -85,6 +85,18 @@ const formOrder = ref({
   lines: []
 })
 
+const resetForm = () => {
+  formOrder.value = {
+    id: null,
+    orderNumber: '',
+    orderDate: new Date().toISOString().split('T')[0],
+    status: 'pending',
+    reference: '',
+    notes: '',
+    lines: []
+  }
+}
+
 watch(() => props.order, (newOrder) => {
   if (newOrder) {
     formOrder.value = {
@@ -99,18 +111,6 @@ watch(() => props.order, (newOrder) => {
     resetForm()
   }
 }, { immediate: true })
-
-const resetForm = () => {
-  formOrder.value = {
-    id: null,
-    orderNumber: '',
-    orderDate: new Date().toISOString().split('T')[0],
-    status: 'pending',
-    reference: '',
-    notes: '',
-    lines: []
-  }
-}
 
 const addLine = () => {
   formOrder.value.lines.push({
