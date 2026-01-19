@@ -53,6 +53,17 @@ class ReportController extends AbstractController
         return $response;
     }
 
+    #[Route('/backordered-items/json', name: 'backordered_items_json', methods: ['GET'])]
+    public function backorderedItemsJson(): Response
+    {
+        $backorderedItems = $this->getBackorderedItems();
+
+        return $this->json([
+            'items' => $backorderedItems,
+            'total' => count($backorderedItems),
+        ]);
+    }
+
     /**
      * @return array<int, array{itemNumber: string, name: string, quantityAvailable: int, quantityOnOrder: int, quantityBackordered: int}>
      */

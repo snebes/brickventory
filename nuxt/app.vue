@@ -9,6 +9,7 @@
         <NuxtLink to="/inventory-adjustments" exact-active-class="active">Inventory Adjustments</NuxtLink>
         <NuxtLink to="/sales-orders" exact-active-class="active">Sales Orders</NuxtLink>
         <NuxtLink to="/items" exact-active-class="active">Items</NuxtLink>
+        <NuxtLink to="/reports" exact-active-class="active">Reports</NuxtLink>
       </nav>
     </div>
     <div class="main-content">
