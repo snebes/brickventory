@@ -1,9 +1,8 @@
 export const useApi = () => {
-  const config = useRuntimeConfig()
-  
   const fetchAPI = async (endpoint: string, options: any = {}) => {
     try {
-      const { data, error } = await useFetch(`${config.public.apiBase}${endpoint}`, {
+      // Use relative path - Nitro will proxy /api/* requests to the backend
+      const { data, error } = await useFetch(endpoint, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
