@@ -38,6 +38,13 @@ class ItemReceiptLine
     #[Validate\GreaterThan(0)]
     public int $quantityReceived;
 
+    /**
+     * Cost per unit for this receipt line (from purchase order rate)
+     * Used to create cost layers for FIFO accounting
+     */
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    public float $unitCost = 0.0;
+
     public function __construct()
     {
         $this->uuid = Ulid::generate();

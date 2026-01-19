@@ -9,6 +9,7 @@ use App\Entity\Item;
 use App\Entity\ItemReceipt;
 use App\Entity\PurchaseOrder;
 use App\Entity\SalesOrder;
+use App\Repository\CostLayerRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,11 +18,9 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/dashboard', name: 'api_dashboard_')]
 class DashboardController extends AbstractController
 {
-    // Default valuation rate per unit (placeholder - should be replaced with actual item costs)
-    private const DEFAULT_UNIT_VALUATION_RATE = 10.0;
-
     public function __construct(
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly CostLayerRepository $costLayerRepository
     ) {
     }
 
@@ -85,8 +84,8 @@ class DashboardController extends AbstractController
             ->getQuery()
             ->getSingleScalarResult();
 
-        // Calculate inventory valuation (using default rate - should be replaced with actual costs)
-        $inventoryValuation = ((int) ($inventoryStats['totalOnHand'] ?? 0)) * self::DEFAULT_UNIT_VALUATION_RATE;
+        // Calculate inventory valuation using FIFO cost layers
+        $inventoryValuation = $this->costLayerRepository->calculateTotalInventoryValuation();
 
         return $this->json([
             'items' => [

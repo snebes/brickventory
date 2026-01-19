@@ -53,6 +53,7 @@ class ItemReceiptController extends AbstractController
                             'itemName' => $line->item->itemName,
                         ],
                         'quantityReceived' => $line->quantityReceived,
+                        'unitCost' => $line->unitCost,
                     ];
                 }, $receipt->lines->toArray()),
             ];
@@ -90,6 +91,7 @@ class ItemReceiptController extends AbstractController
                         'itemName' => $line->item->itemName,
                     ],
                     'quantityReceived' => $line->quantityReceived,
+                    'unitCost' => $line->unitCost,
                 ];
             }, $receipt->lines->toArray()),
         ]);
@@ -178,6 +180,7 @@ class ItemReceiptController extends AbstractController
                 $receiptLine->item = $poLine->item;
                 $receiptLine->purchaseOrderLine = $poLine;
                 $receiptLine->quantityReceived = $quantityReceived;
+                $receiptLine->unitCost = $poLine->rate;  // Capture unit cost from PO line for FIFO accounting
                 
                 $receipt->lines->add($receiptLine);
                 // Note: No need to persist - cascade persist from ItemReceipt handles this
@@ -186,8 +189,14 @@ class ItemReceiptController extends AbstractController
                 $poLine->quantityReceived += $quantityReceived;
                 $this->entityManager->persist($poLine);
 
-                // Dispatch event for inventory update
-                $event = new ItemReceivedEvent($poLine->item, $quantityReceived, $purchaseOrder);
+                // Dispatch event for inventory update with cost information
+                $event = new ItemReceivedEvent(
+                    $poLine->item,
+                    $quantityReceived,
+                    $purchaseOrder,
+                    $poLine->rate,      // Pass unit cost for FIFO cost layer creation
+                    $receiptLine        // Pass receipt line for cost layer reference
+                );
                 $this->eventDispatcher->dispatch($event);
             }
 
