@@ -55,7 +55,11 @@ class InventoryAdjustmentController extends AbstractController
                 'reason' => $adjustment->reason,
                 'memo' => $adjustment->memo,
                 'status' => $adjustment->status,
-                'locationId' => $adjustment->locationId,
+                'location' => [
+                    'id' => $adjustment->location->id,
+                    'locationCode' => $adjustment->location->locationCode,
+                    'locationName' => $adjustment->location->locationName,
+                ],
                 'totalQuantityChange' => $adjustment->totalQuantityChange,
                 'totalValueChange' => $adjustment->totalValueChange,
                 'approvalRequired' => $adjustment->approvalRequired,
@@ -89,7 +93,11 @@ class InventoryAdjustmentController extends AbstractController
             'memo' => $adjustment->memo,
             'status' => $adjustment->status,
             'postingPeriod' => $adjustment->postingPeriod,
-            'locationId' => $adjustment->locationId,
+            'location' => [
+                'id' => $adjustment->location->id,
+                'locationCode' => $adjustment->location->locationCode,
+                'locationName' => $adjustment->location->locationName,
+            ],
             'totalQuantityChange' => $adjustment->totalQuantityChange,
             'totalValueChange' => $adjustment->totalValueChange,
             'approvalRequired' => $adjustment->approvalRequired,
@@ -135,7 +143,11 @@ class InventoryAdjustmentController extends AbstractController
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Validate required fields
+        // Validate required fields - location is required (NetSuite ERP pattern)
+        if (empty($data['locationId'])) {
+            return $this->json(['error' => 'Location is required for inventory adjustments'], Response::HTTP_BAD_REQUEST);
+        }
+
         if (empty($data['reason'])) {
             return $this->json(['error' => 'Reason is required'], Response::HTTP_BAD_REQUEST);
         }
@@ -146,7 +158,7 @@ class InventoryAdjustmentController extends AbstractController
 
         try {
             $adjustment = $this->adjustmentService->createQuantityAdjustment(
-                $data['locationId'] ?? null,
+                (int) $data['locationId'],
                 $data['lines'],
                 $data['reason'],
                 $data['memo'] ?? null,
@@ -158,6 +170,11 @@ class InventoryAdjustmentController extends AbstractController
                 'uuid' => $adjustment->uuid,
                 'adjustmentNumber' => $adjustment->adjustmentNumber,
                 'status' => $adjustment->status,
+                'location' => [
+                    'id' => $adjustment->location->id,
+                    'locationCode' => $adjustment->location->locationCode,
+                    'locationName' => $adjustment->location->locationName,
+                ],
                 'message' => 'Inventory adjustment created successfully'
             ], Response::HTTP_CREATED);
         } catch (\InvalidArgumentException $e) {
@@ -245,6 +262,11 @@ class InventoryAdjustmentController extends AbstractController
                 'adjustmentDate' => $adjustment->adjustmentDate->format('Y-m-d H:i:s'),
                 'adjustmentType' => $adjustment->adjustmentType,
                 'reason' => $adjustment->reason,
+                'location' => [
+                    'id' => $adjustment->location->id,
+                    'locationCode' => $adjustment->location->locationCode,
+                    'locationName' => $adjustment->location->locationName,
+                ],
                 'totalQuantityChange' => $adjustment->totalQuantityChange,
                 'totalValueChange' => $adjustment->totalValueChange,
                 'lineCount' => $adjustment->lines->count(),

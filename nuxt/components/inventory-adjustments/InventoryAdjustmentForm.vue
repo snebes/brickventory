@@ -27,6 +27,17 @@
 
       <div class="form-row">
         <div class="form-group">
+          <LocationsLocationSelector
+            id="location-select"
+            v-model="formData.locationId"
+            label="Location *"
+            placeholder="Select a location"
+            :required="true"
+          />
+          <small class="help-text">Location where inventory will be adjusted (required)</small>
+        </div>
+
+        <div class="form-group">
           <label for="reason">Reason *</label>
           <select id="reason" v-model="formData.reason" required>
             <option value="" disabled>Select a reason</option>
@@ -35,8 +46,10 @@
             </option>
           </select>
         </div>
+      </div>
 
-        <div class="form-group">
+      <div class="form-row">
+        <div class="form-group full-width">
           <label for="memo">Memo</label>
           <input
             id="memo"
@@ -129,6 +142,7 @@ interface AdjustmentLine {
 interface FormData {
   adjustmentNumber: string
   adjustmentDate: string
+  locationId: number | null
   reason: string
   memo: string
   lines: AdjustmentLine[]
@@ -154,6 +168,7 @@ const reasons: Record<string, string> = {
 const formData = ref<FormData>({
   adjustmentNumber: '',
   adjustmentDate: new Date().toISOString().split('T')[0],
+  locationId: null,
   reason: '',
   memo: '',
   lines: [{ itemId: null, quantityChange: 0, notes: '' }]
@@ -183,7 +198,13 @@ const handleSubmit = async () => {
   error.value = ''
   success.value = ''
 
-  // Validate
+  // Validate location (required - NetSuite ERP pattern)
+  if (!formData.value.locationId) {
+    error.value = 'Please select a location'
+    return
+  }
+
+  // Validate reason
   if (!formData.value.reason) {
     error.value = 'Please select a reason'
     return
@@ -201,6 +222,7 @@ const handleSubmit = async () => {
     await api.createInventoryAdjustment({
       adjustmentNumber: formData.value.adjustmentNumber || undefined,
       adjustmentDate: formData.value.adjustmentDate,
+      locationId: formData.value.locationId,
       reason: formData.value.reason,
       memo: formData.value.memo || undefined,
       lines: validLines.map(l => ({
@@ -239,6 +261,10 @@ h4 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
 }
 
 .line-items {

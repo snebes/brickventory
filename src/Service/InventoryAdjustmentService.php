@@ -8,6 +8,7 @@ use App\Entity\InventoryAdjustment;
 use App\Entity\InventoryAdjustmentLine;
 use App\Entity\Item;
 use App\Entity\ItemEvent;
+use App\Entity\Location;
 use App\Event\InventoryAdjustedEvent;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -28,7 +29,7 @@ class InventoryAdjustmentService
     /**
      * Create a quantity adjustment
      *
-     * @param int|null $locationId Location ID for the adjustment
+     * @param int $locationId Location ID for the adjustment (required - follows NetSuite ERP pattern)
      * @param array<array{itemId: int, quantityChange: int, unitCost?: float, notes?: string}> $lines Adjustment line data
      * @param string $reasonCode Reason code for the adjustment
      * @param string|null $memo Optional memo
@@ -36,7 +37,7 @@ class InventoryAdjustmentService
      * @return InventoryAdjustment The created adjustment
      */
     public function createQuantityAdjustment(
-        ?int $locationId,
+        int $locationId,
         array $lines,
         string $reasonCode,
         ?string $memo = null,
@@ -44,6 +45,16 @@ class InventoryAdjustmentService
     ): InventoryAdjustment {
         if (empty($lines)) {
             throw new \InvalidArgumentException('At least one adjustment line is required');
+        }
+
+        // Location is required - following NetSuite ERP pattern
+        $location = $this->entityManager->getRepository(Location::class)->find($locationId);
+        if (!$location) {
+            throw new \InvalidArgumentException("Location with ID {$locationId} not found");
+        }
+
+        if (!$location->active) {
+            throw new \InvalidArgumentException("Location '{$location->locationName}' is inactive and cannot be used for adjustments");
         }
 
         $this->entityManager->beginTransaction();
@@ -54,7 +65,7 @@ class InventoryAdjustmentService
             $adjustment->adjustmentType = InventoryAdjustment::TYPE_QUANTITY_ADJUSTMENT;
             $adjustment->reason = $reasonCode;
             $adjustment->memo = $memo;
-            $adjustment->locationId = $locationId;
+            $adjustment->location = $location;
             $adjustment->status = InventoryAdjustment::STATUS_DRAFT;
             
             $totalQuantityChange = 0.0;
@@ -186,7 +197,7 @@ class InventoryAdjustmentService
             $reversingAdjustment->reason = 'Reversal: ' . $reason;
             $reversingAdjustment->memo = "Reversal of {$originalAdjustment->adjustmentNumber}. Reason: {$reason}";
             $reversingAdjustment->referenceNumber = $originalAdjustment->adjustmentNumber;
-            $reversingAdjustment->locationId = $originalAdjustment->locationId;
+            $reversingAdjustment->location = $originalAdjustment->location;
             $reversingAdjustment->status = InventoryAdjustment::STATUS_DRAFT;
 
             // Create reversing lines with opposite quantities
@@ -274,10 +285,10 @@ class InventoryAdjustmentService
     {
         $quantityToConsume = abs($line->quantityChange);
         
-        // Consume layers using FIFO
+        // Consume layers using FIFO - use location from header
         $result = $this->fifoLayerService->consumeLayersFIFO(
             $line->item,
-            $line->inventoryAdjustment->locationId,
+            $line->inventoryAdjustment->location->id,
             $quantityToConsume,
             'inventory_adjustment',
             $line->inventoryAdjustment->id
@@ -292,10 +303,16 @@ class InventoryAdjustmentService
 
     /**
      * Create a cost revaluation adjustment
+     *
+     * @param int $itemId Item ID
+     * @param int $locationId Location ID (required - follows NetSuite ERP pattern)
+     * @param float $newUnitCost New unit cost
+     * @param string $reason Reason for the revaluation
+     * @return InventoryAdjustment The created adjustment
      */
     public function createCostRevaluation(
         int $itemId,
-        ?int $locationId,
+        int $locationId,
         float $newUnitCost,
         string $reason
     ): InventoryAdjustment {
@@ -305,11 +322,21 @@ class InventoryAdjustmentService
             throw new \InvalidArgumentException("Item with ID {$itemId} not found");
         }
 
+        // Location is required - following NetSuite ERP pattern
+        $location = $this->entityManager->getRepository(Location::class)->find($locationId);
+        if (!$location) {
+            throw new \InvalidArgumentException("Location with ID {$locationId} not found");
+        }
+
+        if (!$location->active) {
+            throw new \InvalidArgumentException("Location '{$location->locationName}' is inactive and cannot be used for adjustments");
+        }
+
         $adjustment = new InventoryAdjustment();
         $adjustment->adjustmentNumber = $this->generateAdjustmentNumber();
         $adjustment->adjustmentType = InventoryAdjustment::TYPE_COST_REVALUATION;
         $adjustment->reason = $reason;
-        $adjustment->locationId = $locationId;
+        $adjustment->location = $location;
         $adjustment->status = InventoryAdjustment::STATUS_DRAFT;
 
         $line = new InventoryAdjustmentLine();
@@ -332,10 +359,16 @@ class InventoryAdjustmentService
 
     /**
      * Create a write-down adjustment for obsolete inventory
+     *
+     * @param int $itemId Item ID
+     * @param int $locationId Location ID (required - follows NetSuite ERP pattern)
+     * @param float $writeDownPercent Write-down percentage (0-100)
+     * @param string $reason Reason for the write-down
+     * @return InventoryAdjustment The created adjustment
      */
     public function createWriteDown(
         int $itemId,
-        ?int $locationId,
+        int $locationId,
         float $writeDownPercent,
         string $reason
     ): InventoryAdjustment {
