@@ -8,6 +8,7 @@ use App\Entity\Item;
 use App\Entity\ItemEvent;
 use App\Event\ItemFulfilledEvent;
 use App\Repository\CostLayerRepository;
+use App\Service\InventoryBalanceService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
@@ -20,7 +21,8 @@ class ItemFulfilledEventHandler
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly CostLayerRepository $costLayerRepository
+        private readonly CostLayerRepository $costLayerRepository,
+        private readonly InventoryBalanceService $inventoryBalanceService
     ) {
     }
 
@@ -29,11 +31,37 @@ class ItemFulfilledEventHandler
         $item = $event->getItem();
         $quantity = $event->getQuantity();
         $salesOrder = $event->getSalesOrder();
+        $fulfillmentLine = $event->getFulfillmentLine();
 
-        // Consume cost layers in FIFO order
-        $costResult = $this->consumeCostLayers($item, $quantity);
+        // Get location from fulfillment line or use default
+        $locationId = null;
+        if ($fulfillmentLine && $fulfillmentLine->itemFulfillment->fulfillFromLocation) {
+            $locationId = $fulfillmentLine->itemFulfillment->fulfillFromLocation->id;
+        } else {
+            // Get default location
+            $defaultLocation = $this->entityManager->getRepository(\App\Entity\Location::class)
+                ->findOneBy(['locationCode' => 'DEFAULT']);
+            if ($defaultLocation) {
+                $locationId = $defaultLocation->id;
+            }
+        }
+
+        // Consume cost layers in FIFO order (location-specific)
+        $costResult = $this->consumeCostLayers($item, $quantity, $locationId);
         $totalCost = $costResult['totalCost'];
         $layersConsumed = $costResult['layersConsumed'];
+
+        // Update inventory balance at location (NEW: location-specific tracking)
+        if ($locationId) {
+            $binLocation = $fulfillmentLine?->binLocation;
+            $this->inventoryBalanceService->updateBalance(
+                $item->id,
+                $locationId,
+                -$quantity,  // Negative because inventory decreases
+                'fulfillment',
+                $binLocation
+            );
+        }
 
         // Create event in event store
         $itemEvent = new ItemEvent();
@@ -46,19 +74,15 @@ class ItemFulfilledEventHandler
             'order_number' => $salesOrder->orderNumber,
             'cost_of_goods_sold' => $totalCost,
             'cost_layers_consumed' => $layersConsumed,
+            'location_id' => $locationId,
         ]);
 
         $this->entityManager->persist($itemEvent);
 
-        // Update Item quantities based on event
-        // quantityOnHand decreases when items are fulfilled
+        // DEPRECATED: Update Item quantities (for backward compatibility)
+        // These will eventually be removed in favor of location-specific balances
         $item->quantityOnHand -= $quantity;
-        
-        // quantityCommitted decreases when items are fulfilled (order is being shipped)
         $item->quantityCommitted -= $quantity;
-        
-        // Recalculate quantityAvailable
-        // quantityAvailable = quantityOnHand - quantityCommitted
         $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
 
         $this->entityManager->persist($item);
@@ -67,14 +91,17 @@ class ItemFulfilledEventHandler
 
     /**
      * Consume cost layers in FIFO order and return total cost of goods sold
+     * Now respects location boundaries for location-specific FIFO
      * 
      * @param Item $item
      * @param int $quantity
+     * @param int|null $locationId Location from which items are being fulfilled
      * @return array{totalCost: float, layersConsumed: array<array{layerId: int, quantity: int, cost: float}>}
      */
-    private function consumeCostLayers(Item $item, int $quantity): array
+    private function consumeCostLayers(Item $item, int $quantity, ?int $locationId = null): array
     {
-        $costLayers = $this->costLayerRepository->findAvailableByItem($item);
+        // Get layers filtered by location for location-specific FIFO
+        $costLayers = $this->costLayerRepository->findAvailableByItem($item, $locationId);
         $remainingQuantity = $quantity;
         $totalCost = 0.0;
         $layersConsumed = [];
