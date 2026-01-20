@@ -184,6 +184,110 @@ class InventoryAdjustmentController extends AbstractController
         }
     }
 
+    #[Route('/{id}', name: 'update', methods: ['PUT'])]
+    public function update(int $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        
+        if (!$data) {
+            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $adjustment = $this->entityManager->getRepository(InventoryAdjustment::class)->find($id);
+        
+        if (!$adjustment) {
+            return $this->json(['error' => 'Inventory adjustment not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Only draft adjustments can be edited
+        if (!$adjustment->isDraft()) {
+            return $this->json(
+                ['error' => 'Only draft adjustments can be edited. Use reverse for posted adjustments.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        try {
+            // Handle location change
+            if (isset($data['locationId'])) {
+                $newLocationId = (int) $data['locationId'];
+                $currentLocationId = $adjustment->location?->id;
+
+                if ($newLocationId !== $currentLocationId) {
+                    $newLocation = $this->entityManager->getRepository(\App\Entity\Location::class)->find($newLocationId);
+                    if (!$newLocation) {
+                        return $this->json(['error' => 'Invalid location specified'], Response::HTTP_BAD_REQUEST);
+                    }
+                    $adjustment->location = $newLocation;
+                }
+            }
+
+            // Update basic fields
+            if (isset($data['reason'])) {
+                $adjustment->reason = $data['reason'];
+            }
+            if (array_key_exists('memo', $data)) {
+                $adjustment->memo = $data['memo'] ?: null;
+            }
+
+            // Remove existing lines
+            foreach ($adjustment->lines as $line) {
+                $this->entityManager->remove($line);
+            }
+            $adjustment->lines->clear();
+
+            // Add new lines
+            $lines = $data['lines'] ?? [];
+            $totalQuantityChange = 0.0;
+            $totalValueChange = 0.0;
+
+            foreach ($lines as $lineData) {
+                $item = $this->entityManager->getRepository(\App\Entity\Item::class)->find($lineData['itemId']);
+                
+                if (!$item) {
+                    throw new \InvalidArgumentException("Item {$lineData['itemId']} not found");
+                }
+
+                $line = new InventoryAdjustmentLine();
+                $line->inventoryAdjustment = $adjustment;
+                $line->item = $item;
+                $line->quantityChange = (float) ($lineData['quantityChange'] ?? 0);
+                $line->notes = $lineData['notes'] ?? null;
+                $line->adjustmentType = $adjustment->adjustmentType;
+
+                $adjustment->lines->add($line);
+
+                $totalQuantityChange += $line->quantityChange;
+                // Estimate value change based on item's current cost if available
+                $unitCost = $item->unitCost ?? 0;
+                $totalValueChange += $line->quantityChange * $unitCost;
+            }
+
+            // Update totals
+            $adjustment->totalQuantityChange = $totalQuantityChange;
+            $adjustment->totalValueChange = $totalValueChange;
+
+            $this->entityManager->flush();
+
+            return $this->json([
+                'id' => $adjustment->id,
+                'uuid' => $adjustment->uuid,
+                'adjustmentNumber' => $adjustment->adjustmentNumber,
+                'status' => $adjustment->status,
+                'location' => [
+                    'id' => $adjustment->location->id,
+                    'locationCode' => $adjustment->location->locationCode,
+                    'locationName' => $adjustment->location->locationName,
+                ],
+                'message' => 'Inventory adjustment updated successfully'
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Failed to update adjustment: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     #[Route('/{id}/post', name: 'post', methods: ['POST'])]
     public function post(int $id): JsonResponse
     {
