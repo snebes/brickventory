@@ -155,7 +155,6 @@ const emit = defineEmits(['save', 'cancel'])
 const api = useApi()
 
 const vendors = ref<any[]>([])
-const locations = ref<any[]>([])
 
 const formOrder = ref({
   id: null,
@@ -191,10 +190,21 @@ const selectedVendor = computed(() => {
 })
 
 // Computed property to get selected location details
-const selectedLocation = computed(() => {
-  if (!formOrder.value.locationId) return null
-  return locations.value.find(l => l.id === formOrder.value.locationId)
-})
+const selectedLocation = ref<any>(null)
+
+// Watch locationId and fetch details when it changes
+watch(() => formOrder.value.locationId, async (newLocationId) => {
+  if (newLocationId) {
+    try {
+      selectedLocation.value = await api.getLocation(newLocationId)
+    } catch (error) {
+      console.error('Failed to load location details:', error)
+      selectedLocation.value = null
+    }
+  } else {
+    selectedLocation.value = null
+  }
+}, { immediate: true })
 
 const loadVendors = async () => {
   try {
@@ -203,16 +213,6 @@ const loadVendors = async () => {
   } catch (error) {
     console.error('Failed to load vendors:', error)
     vendors.value = []
-  }
-}
-
-const loadLocations = async () => {
-  try {
-    const response = await api.getReceivingLocations()
-    locations.value = response?.locations || response || []
-  } catch (error) {
-    console.error('Failed to load locations:', error)
-    locations.value = []
   }
 }
 
@@ -291,7 +291,6 @@ const save = () => {
 
 onMounted(() => {
   loadVendors()
-  loadLocations()
 })
 </script>
 
