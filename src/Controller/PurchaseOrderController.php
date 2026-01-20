@@ -10,6 +10,7 @@ use App\Entity\PurchaseOrderLine;
 use App\Event\PurchaseOrderCreatedEvent;
 use App\Event\PurchaseOrderUpdatedEvent;
 use App\Event\PurchaseOrderDeletedEvent;
+use App\Service\PurchaseOrderService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -23,7 +24,8 @@ class PurchaseOrderController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly EventDispatcherInterface $eventDispatcher
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly PurchaseOrderService $purchaseOrderService
     ) {
     }
 
@@ -227,6 +229,20 @@ class PurchaseOrderController extends AbstractController
             'status' => $po->status,
             'reference' => $po->reference,
             'notes' => $po->notes,
+            'vendor' => $po->vendor ? [
+                'id' => $po->vendor->id,
+                'vendorCode' => $po->vendor->vendorCode,
+                'vendorName' => $po->vendor->vendorName,
+            ] : null,
+            'expectedReceiptDate' => $po->expectedReceiptDate?->format('Y-m-d'),
+            'paymentTerms' => $po->paymentTerms,
+            'currency' => $po->currency,
+            'subtotal' => $po->subtotal,
+            'taxTotal' => $po->taxTotal,
+            'shippingCost' => $po->shippingCost,
+            'total' => $po->total,
+            'approvedBy' => $po->approvedBy,
+            'approvedAt' => $po->approvedAt?->format('Y-m-d H:i:s'),
             'lines' => array_map(function (PurchaseOrderLine $line) {
                 return [
                     'id' => $line->id,
@@ -237,9 +253,99 @@ class PurchaseOrderController extends AbstractController
                     ],
                     'quantityOrdered' => $line->quantityOrdered,
                     'quantityReceived' => $line->quantityReceived,
+                    'quantityBilled' => $line->quantityBilled,
                     'rate' => $line->rate,
+                    'closed' => $line->closed,
+                    'closedReason' => $line->closedReason,
                 ];
             }, $po->lines->toArray()),
         ];
+    }
+
+    #[Route('/{id}/approve', name: 'approve', methods: ['POST'])]
+    public function approve(int $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        
+        try {
+            $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
+            
+            if (!$po) {
+                return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
+            }
+
+            $approverId = $data['approverId'] ?? 1; // TODO: Get from authenticated user
+            
+            $this->purchaseOrderService->approvePurchaseOrder($po, $approverId);
+
+            return $this->json([
+                'id' => $id,
+                'message' => 'Purchase order approved successfully',
+                'status' => $po->status
+            ]);
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route('/{id}/close', name: 'close', methods: ['POST'])]
+    public function close(int $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        
+        try {
+            $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
+            
+            if (!$po) {
+                return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
+            }
+
+            $reason = $data['reason'] ?? 'Closed';
+            
+            $this->purchaseOrderService->closePurchaseOrder($po, $reason);
+
+            return $this->json([
+                'id' => $id,
+                'message' => 'Purchase order closed successfully',
+                'status' => $po->status
+            ]);
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route('/{id}/receipt-status', name: 'receipt_status', methods: ['GET'])]
+    public function getReceiptStatus(int $id): JsonResponse
+    {
+        try {
+            $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
+            
+            if (!$po) {
+                return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
+            }
+
+            $lineStatus = array_map(function (PurchaseOrderLine $line) {
+                return [
+                    'lineId' => $line->id,
+                    'itemId' => $line->item->id,
+                    'itemName' => $line->item->itemName,
+                    'quantityOrdered' => $line->quantityOrdered,
+                    'quantityReceived' => $line->quantityReceived,
+                    'quantityRemaining' => $line->getRemainingQuantity(),
+                    'fullyReceived' => $line->isFullyReceived(),
+                    'closed' => $line->closed,
+                ];
+            }, $po->lines->toArray());
+
+            return $this->json([
+                'purchaseOrderId' => $po->id,
+                'orderNumber' => $po->orderNumber,
+                'status' => $po->status,
+                'lines' => $lineStatus,
+                'fullyReceived' => $this->purchaseOrderService->isFullyReceived($po),
+            ]);
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
     }
 }
