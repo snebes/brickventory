@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\EventHandler;
 
-use App\Entity\CostLayer;
 use App\Entity\ItemEvent;
 use App\Event\ItemReceivedEvent;
 use Doctrine\ORM\EntityManagerInterface;
@@ -12,7 +11,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * Event handler that records item receipt events in the event store
- * and creates cost layers for FIFO inventory valuation
+ * Note: Cost layer creation is now handled by ItemReceiptService
  */
 #[AsEventListener(event: ItemReceivedEvent::class)]
 class ItemReceivedEventHandler
@@ -28,7 +27,6 @@ class ItemReceivedEventHandler
         $quantity = $event->getQuantity();
         $purchaseOrder = $event->getPurchaseOrder();
         $unitCost = $event->getUnitCost();
-        $itemReceiptLine = $event->getItemReceiptLine();
 
         // Create event in event store
         $itemEvent = new ItemEvent();
@@ -41,33 +39,15 @@ class ItemReceivedEventHandler
             'order_number' => $purchaseOrder->orderNumber,
             'reference' => $purchaseOrder->reference,
             'unit_cost' => $unitCost,
+            'vendor_id' => $purchaseOrder->vendor?->id,
+            'vendor_name' => $purchaseOrder->vendor?->vendorName,
         ]);
 
         $this->entityManager->persist($itemEvent);
 
-        // Create cost layer for FIFO inventory valuation
-        $costLayer = new CostLayer();
-        $costLayer->item = $item;
-        $costLayer->itemReceiptLine = $itemReceiptLine;
-        $costLayer->quantityReceived = $quantity;
-        $costLayer->quantityRemaining = $quantity;
-        $costLayer->unitCost = $unitCost;
-        // receiptDate is set in CostLayer constructor
+        // Note: Cost layer creation, inventory updates are handled by ItemReceiptService
+        // This handler only creates the event record for audit trail
 
-        $this->entityManager->persist($costLayer);
-
-        // Update Item quantities based on event
-        // quantityOnHand increases when items are received
-        $item->quantityOnHand += $quantity;
-        
-        // quantityOnOrder decreases when items are received
-        $item->quantityOnOrder -= $quantity;
-        
-        // Recalculate quantityAvailable
-        // quantityAvailable = quantityOnHand - quantityCommitted
-        $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
-
-        $this->entityManager->persist($item);
         $this->entityManager->flush();
     }
 }

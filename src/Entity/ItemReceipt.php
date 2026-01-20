@@ -11,6 +11,9 @@ use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 #[ORM\Entity]
+#[ORM\Table(name: 'item_receipt')]
+#[ORM\Index(columns: ['vendor_id'], name: 'idx_receipt_vendor')]
+#[ORM\Index(columns: ['status'], name: 'idx_receipt_status')]
 class ItemReceipt
 {
     #[ORM\Id]
@@ -34,7 +37,44 @@ class ItemReceipt
     public ?string $notes = null;
 
     #[ORM\Column(type: 'string', length: 50)]
-    public string $status = 'received';
+    public string $status = 'Received';
+
+    // Denormalized vendor for queries
+    #[ORM\ManyToOne(targetEntity: Vendor::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public ?Vendor $vendor = null;
+
+    // Location
+    #[ORM\Column(type: 'integer', nullable: true)]
+    public ?int $receivedAtLocationId = null;
+
+    // Shipping information
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    public ?string $vendorShipmentNumber = null;
+
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    public ?string $carrier = null;
+
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    public ?string $trackingNumber = null;
+
+    // Freight and landed costs
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    public float $freightCost = 0.0;
+
+    #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    public ?string $landedCostCategory = null;
+
+    // Inspection
+    #[ORM\Column(type: 'integer', nullable: true)]
+    public ?int $inspectorId = null;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    public ?string $inspectionNotes = null;
+
+    // Billing
+    #[ORM\Column(type: 'boolean')]
+    public bool $billImmediately = false;
 
     /**
      * @var Collection<int, ItemReceiptLine>

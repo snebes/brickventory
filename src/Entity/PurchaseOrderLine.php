@@ -9,6 +9,7 @@ use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 #[ORM\Entity]
+#[ORM\Table(name: 'purchase_order_line')]
 class PurchaseOrderLine
 {
     #[ORM\Id]
@@ -36,11 +37,52 @@ class PurchaseOrderLine
     #[ORM\Column(type: 'integer')]
     public int $quantityReceived = 0;
 
+    #[ORM\Column(type: 'integer')]
+    public int $quantityBilled = 0;
+
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
     public float $rate = 0.0;
+
+    // Tax information
+    #[ORM\Column(type: 'decimal', precision: 5, scale: 4, nullable: true)]
+    public ?float $taxRate = null;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
+    public ?float $taxAmount = null;
+
+    // For future accounting integration
+    #[ORM\Column(type: 'integer', nullable: true)]
+    public ?int $expenseAccountId = null;
+
+    // Line-level delivery date
+    #[ORM\Column(type: 'date', nullable: true)]
+    public ?\DateTimeInterface $expectedReceiptDate = null;
+
+    // Closure tracking
+    #[ORM\Column(type: 'boolean')]
+    public bool $closed = false;
+
+    #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    public ?string $closedReason = null;
 
     public function __construct()
     {
         $this->uuid = Ulid::generate();
+    }
+
+    /**
+     * Check if line is fully received
+     */
+    public function isFullyReceived(): bool
+    {
+        return $this->quantityReceived >= $this->quantityOrdered;
+    }
+
+    /**
+     * Get remaining quantity to receive
+     */
+    public function getRemainingQuantity(): int
+    {
+        return max(0, $this->quantityOrdered - $this->quantityReceived);
     }
 }
