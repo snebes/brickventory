@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Item;
+use App\Entity\Location;
 use App\Entity\PurchaseOrder;
 use App\Entity\PurchaseOrderLine;
 use App\Entity\Vendor;
@@ -46,6 +47,7 @@ class PurchaseOrderController extends AbstractController
             ->getRepository(PurchaseOrder::class)
             ->createQueryBuilder('po')
             ->leftJoin('po.vendor', 'v')
+            ->leftJoin('po.location', 'l')
             ->orderBy('po.orderDate', 'DESC');
 
         if ($status) {
@@ -124,8 +126,37 @@ class PurchaseOrderController extends AbstractController
                 ], Response::HTTP_BAD_REQUEST);
             }
 
+            // Validate location (required)
+            if (!isset($data['locationId']) || empty($data['locationId'])) {
+                return $this->json([
+                    'error' => 'Receiving location is required. Please select a location before saving the Purchase Order.'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Find and validate the location
+            $location = $this->entityManager->getRepository(Location::class)->find($data['locationId']);
+            if (!$location) {
+                return $this->json([
+                    'error' => 'Invalid location specified'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Validate location is active and can receive
+            if (!$location->active) {
+                return $this->json([
+                    'error' => 'The selected location is inactive. Please choose an active location.'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            if (!$location->canReceiveInventory()) {
+                return $this->json([
+                    'error' => 'The selected location is not configured to receive inventory. Please choose a receiving location.'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
             $po = new PurchaseOrder();
             $po->vendor = $vendor;
+            $po->location = $location;
             $po->orderNumber = $data['orderNumber'] ?? $this->purchaseOrderRepository->getNextOrderNumber();
             $po->orderDate = new \DateTime($data['orderDate'] ?? 'now');
             $po->status = $data['status'] ?? 'Pending Approval';
@@ -222,6 +253,38 @@ class PurchaseOrderController extends AbstractController
                     }
 
                     $po->vendor = $newVendor;
+                }
+            }
+
+            // Handle location change
+            if (isset($data['locationId'])) {
+                $newLocationId = (int) $data['locationId'];
+                $currentLocationId = $po->location?->id ?? null;
+
+                if ($newLocationId !== $currentLocationId) {
+                    // Check if location change is allowed (not after items received)
+                    $hasReceipts = $po->status === 'Partially Received' || $po->status === 'Fully Received';
+                    if ($hasReceipts) {
+                        return $this->json([
+                            'error' => 'Location cannot be changed after items have been received.'
+                        ], Response::HTTP_BAD_REQUEST);
+                    }
+
+                    // Validate the new location
+                    $newLocation = $this->entityManager->getRepository(Location::class)->find($newLocationId);
+                    if (!$newLocation) {
+                        return $this->json([
+                            'error' => 'Invalid location specified'
+                        ], Response::HTTP_BAD_REQUEST);
+                    }
+
+                    if (!$newLocation->active || !$newLocation->canReceiveInventory()) {
+                        return $this->json([
+                            'error' => 'The selected location cannot receive inventory.'
+                        ], Response::HTTP_BAD_REQUEST);
+                    }
+
+                    $po->location = $newLocation;
                 }
             }
 
@@ -327,6 +390,11 @@ class PurchaseOrderController extends AbstractController
                 'vendorName' => $po->vendor->vendorName,
                 'defaultPaymentTerms' => $po->vendor->defaultPaymentTerms,
                 'defaultCurrency' => $po->vendor->defaultCurrency,
+            ],
+            'location' => [
+                'id' => $po->location->id,
+                'locationCode' => $po->location->locationCode,
+                'locationName' => $po->location->locationName,
             ],
             'expectedReceiptDate' => $po->expectedReceiptDate?->format('Y-m-d'),
             'paymentTerms' => $po->paymentTerms,

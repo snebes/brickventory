@@ -38,7 +38,7 @@ class ItemReceiptService
         float $unitCost
     ): CostLayer {
         // Get location from receipt or use default
-        $location = $receiptLine->itemReceipt->receivedAtLocation;
+        $location = $receiptLine->itemReceipt->location;
         if (!$location) {
             throw new \InvalidArgumentException('Receipt must have a receiving location');
         }
@@ -112,8 +112,8 @@ class ItemReceiptService
         if ($receivedAtLocationId) {
             $receivingLocation = $this->entityManager->getRepository(\App\Entity\Location::class)
                 ->find($receivedAtLocationId);
-        } elseif ($po->shipToLocation) {
-            $receivingLocation = $po->shipToLocation;
+        } elseif ($po->location) {
+            $receivingLocation = $po->location;
         }
 
         if (!$receivingLocation) {
@@ -129,7 +129,7 @@ class ItemReceiptService
         $receipt = new ItemReceipt();
         $receipt->purchaseOrder = $po;
         $receipt->vendor = $po->vendor;
-        $receipt->receivedAtLocation = $receivingLocation;
+        $receipt->location = $receivingLocation;
         $receipt->freightCost = $freightCost;
 
         $this->entityManager->persist($receipt);

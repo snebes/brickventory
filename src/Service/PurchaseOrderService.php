@@ -15,8 +15,59 @@ use Doctrine\ORM\EntityManagerInterface;
 class PurchaseOrderService
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly LocationService $locationService
     ) {
+    }
+
+    /**
+     * Validate location for receiving
+     * 
+     * @throws \RuntimeException if validation fails
+     */
+    public function validateLocation(int $locationId): bool
+    {
+        $location = $this->entityManager->getRepository(\App\Entity\Location::class)->find($locationId);
+        
+        if (!$location) {
+            throw new \RuntimeException('Invalid location specified');
+        }
+
+        if (!$location->active) {
+            throw new \RuntimeException('Cannot use inactive location for receiving');
+        }
+
+        if (!$location->canReceiveInventory()) {
+            throw new \RuntimeException('Location is not configured to receive inventory');
+        }
+
+        return true;
+    }
+
+    /**
+     * Get default receiving location
+     */
+    public function getDefaultReceivingLocation(): ?\App\Entity\Location
+    {
+        // Try to get DEFAULT location
+        $location = $this->entityManager->getRepository(\App\Entity\Location::class)
+            ->findOneBy(['locationCode' => 'DEFAULT', 'active' => true]);
+
+        if ($location && $location->canReceiveInventory()) {
+            return $location;
+        }
+
+        // If DEFAULT not found, get first active receiving location
+        $qb = $this->entityManager->createQueryBuilder();
+        $qb->select('l')
+            ->from(\App\Entity\Location::class, 'l')
+            ->where('l.active = :active')
+            ->andWhere('l.makeInventoryAvailable = :makeAvailable')
+            ->setParameter('active', true)
+            ->setParameter('makeAvailable', true)
+            ->setMaxResults(1);
+
+        return $qb->getQuery()->getOneOrNullResult();
     }
 
     /**
@@ -36,6 +87,12 @@ class PurchaseOrderService
         if (!$vendor->active) {
             throw new \RuntimeException('Cannot create PO with inactive vendor');
         }
+
+        // Validate location (required)
+        if (!isset($po->location)) {
+            throw new \RuntimeException('Receiving location is required');
+        }
+        $this->validateLocation($po->location->id);
 
         // Validate multi-currency
         if ($po->currency && $vendor->defaultCurrency && $po->currency !== $vendor->defaultCurrency) {

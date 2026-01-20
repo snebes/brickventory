@@ -31,8 +31,8 @@ class ItemReceivedEventHandler
 
         // Get location from receipt line
         $locationId = null;
-        if ($receiptLine && $receiptLine->itemReceipt->receivedAtLocation) {
-            $locationId = $receiptLine->itemReceipt->receivedAtLocation->id;
+        if ($receiptLine && $receiptLine->itemReceipt->location) {
+            $locationId = $receiptLine->itemReceipt->location->id;
         }
 
         // Create event in event store

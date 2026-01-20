@@ -44,10 +44,11 @@ class ItemReceipt
     #[ORM\JoinColumn(nullable: true)]
     public ?Vendor $vendor = null;
 
-    // Location
+    // Location - required for receiving inventory (inherits from PO by default)
     #[ORM\ManyToOne(targetEntity: Location::class)]
-    #[ORM\JoinColumn(nullable: true)]
-    public ?Location $receivedAtLocation = null;
+    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    #[Validate\NotNull(message: 'Receiving location is required.')]
+    public Location $location;
 
     // Shipping information
     #[ORM\Column(type: 'string', length: 100, nullable: true)]
@@ -88,5 +89,13 @@ class ItemReceipt
         $this->uuid = Ulid::generate();
         $this->receiptDate = new \DateTime();
         $this->lines = new ArrayCollection();
+    }
+
+    /**
+     * Get location ID for API access
+     */
+    public function getLocationId(): ?int
+    {
+        return $this->location?->id ?? null;
     }
 }
