@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\Item;
 use App\Entity\PurchaseOrder;
 use App\Entity\PurchaseOrderLine;
+use App\Entity\Vendor;
 use App\Event\PurchaseOrderCreatedEvent;
 use App\Event\PurchaseOrderUpdatedEvent;
 use App\Event\PurchaseOrderDeletedEvent;
@@ -33,6 +34,7 @@ class PurchaseOrderController extends AbstractController
     public function list(Request $request): JsonResponse
     {
         $status = $request->query->get('status');
+        $vendorId = $request->query->get('vendorId');
         $orderDateFrom = $request->query->get('orderDateFrom');
         $orderDateTo = $request->query->get('orderDateTo');
         $page = (int) $request->query->get('page', 1);
@@ -41,11 +43,17 @@ class PurchaseOrderController extends AbstractController
         $qb = $this->entityManager
             ->getRepository(PurchaseOrder::class)
             ->createQueryBuilder('po')
+            ->leftJoin('po.vendor', 'v')
             ->orderBy('po.orderDate', 'DESC');
 
         if ($status) {
             $qb->andWhere('po.status = :status')
                ->setParameter('status', $status);
+        }
+
+        if ($vendorId) {
+            $qb->andWhere('po.vendor = :vendorId')
+               ->setParameter('vendorId', (int) $vendorId);
         }
 
         if ($orderDateFrom) {
@@ -92,12 +100,45 @@ class PurchaseOrderController extends AbstractController
         }
 
         try {
+            // Validate vendor_id is provided (required per NetSuite ERP model)
+            if (!isset($data['vendorId']) || empty($data['vendorId'])) {
+                return $this->json([
+                    'error' => 'Vendor is required. Please select a vendor before saving the Purchase Order.'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Find and validate the vendor
+            $vendor = $this->entityManager->getRepository(Vendor::class)->find($data['vendorId']);
+            if (!$vendor) {
+                return $this->json([
+                    'error' => 'Invalid vendor specified'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Validate vendor is active
+            if (!$vendor->active) {
+                return $this->json([
+                    'error' => 'The selected vendor is inactive. Please choose an active vendor.'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
             $po = new PurchaseOrder();
+            $po->vendor = $vendor;
             $po->orderNumber = $data['orderNumber'] ?? 'PO-' . date('YmdHis');
             $po->orderDate = new \DateTime($data['orderDate'] ?? 'now');
-            $po->status = $data['status'] ?? 'pending';
+            $po->status = $data['status'] ?? 'Pending Approval';
             $po->reference = $data['reference'] ?? null;
             $po->notes = $data['notes'] ?? null;
+
+            // Auto-populate vendor defaults if not provided
+            $po->paymentTerms = $data['paymentTerms'] ?? $vendor->defaultPaymentTerms;
+            $po->currency = $data['currency'] ?? $vendor->defaultCurrency;
+            $po->billToAddress = $data['billToAddress'] ?? $vendor->billingAddress;
+
+            // Handle expected receipt date
+            if (isset($data['expectedReceiptDate'])) {
+                $po->expectedReceiptDate = new \DateTime($data['expectedReceiptDate']);
+            }
 
             $lines = $data['lines'] ?? [];
             foreach ($lines as $lineData) {
@@ -115,6 +156,9 @@ class PurchaseOrderController extends AbstractController
                 
                 $po->lines->add($line);
             }
+
+            // Calculate totals
+            $po->calculateTotals();
 
             $this->entityManager->persist($po);
             $this->entityManager->flush();
@@ -147,6 +191,38 @@ class PurchaseOrderController extends AbstractController
                 throw new \InvalidArgumentException("Purchase order {$id} not found");
             }
 
+            // Handle vendor change
+            if (isset($data['vendorId'])) {
+                $newVendorId = (int) $data['vendorId'];
+                $currentVendorId = $po->vendor->id ?? null;
+
+                if ($newVendorId !== $currentVendorId) {
+                    // Check if vendor change is allowed based on PO status
+                    $approvedStatuses = ['Pending Receipt', 'Partially Received', 'Fully Received', 'Closed'];
+                    if (in_array($po->status, $approvedStatuses, true)) {
+                        return $this->json([
+                            'error' => 'Vendor cannot be changed after Purchase Order approval.'
+                        ], Response::HTTP_BAD_REQUEST);
+                    }
+
+                    // Validate the new vendor
+                    $newVendor = $this->entityManager->getRepository(Vendor::class)->find($newVendorId);
+                    if (!$newVendor) {
+                        return $this->json([
+                            'error' => 'Invalid vendor specified'
+                        ], Response::HTTP_BAD_REQUEST);
+                    }
+
+                    if (!$newVendor->active) {
+                        return $this->json([
+                            'error' => 'The selected vendor is inactive. Please choose an active vendor.'
+                        ], Response::HTTP_BAD_REQUEST);
+                    }
+
+                    $po->vendor = $newVendor;
+                }
+            }
+
             // Capture previous state for event sourcing
             $previousState = $this->serializePurchaseOrder($po);
 
@@ -155,6 +231,17 @@ class PurchaseOrderController extends AbstractController
             $po->status = $data['status'];
             $po->reference = $data['reference'] ?? null;
             $po->notes = $data['notes'] ?? null;
+
+            // Update optional fields
+            if (isset($data['paymentTerms'])) {
+                $po->paymentTerms = $data['paymentTerms'];
+            }
+            if (isset($data['currency'])) {
+                $po->currency = $data['currency'];
+            }
+            if (isset($data['expectedReceiptDate'])) {
+                $po->expectedReceiptDate = $data['expectedReceiptDate'] ? new \DateTime($data['expectedReceiptDate']) : null;
+            }
 
             // Remove existing lines
             foreach ($po->lines as $line) {
@@ -179,6 +266,9 @@ class PurchaseOrderController extends AbstractController
                 
                 $po->lines->add($line);
             }
+
+            // Recalculate totals
+            $po->calculateTotals();
 
             $this->entityManager->flush();
 
@@ -229,11 +319,13 @@ class PurchaseOrderController extends AbstractController
             'status' => $po->status,
             'reference' => $po->reference,
             'notes' => $po->notes,
-            'vendor' => $po->vendor ? [
+            'vendor' => [
                 'id' => $po->vendor->id,
                 'vendorCode' => $po->vendor->vendorCode,
                 'vendorName' => $po->vendor->vendorName,
-            ] : null,
+                'defaultPaymentTerms' => $po->vendor->defaultPaymentTerms,
+                'defaultCurrency' => $po->vendor->defaultCurrency,
+            ],
             'expectedReceiptDate' => $po->expectedReceiptDate?->format('Y-m-d'),
             'paymentTerms' => $po->paymentTerms,
             'currency' => $po->currency,

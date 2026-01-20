@@ -8,10 +8,20 @@
     </div>
 
     <div v-if="!showForm && !showReceiveForm" class="card">
+      <div class="filters" style="margin-bottom: 15px;">
+        <select v-model="vendorFilter" @change="loadOrders" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+          <option value="">All Vendors</option>
+          <option v-for="vendor in vendors" :key="vendor.id" :value="vendor.id">
+            {{ vendor.vendorName }}
+          </option>
+        </select>
+      </div>
+
       <table>
         <thead>
           <tr>
             <th>Order Number</th>
+            <th>Vendor</th>
             <th>Date</th>
             <th>Reference</th>
             <th>Status</th>
@@ -22,6 +32,7 @@
         <tbody>
           <tr v-for="order in orders" :key="order.id">
             <td>{{ order.orderNumber }}</td>
+            <td>{{ order.vendor?.vendorName || '-' }}</td>
             <td>{{ formatDate(order.orderDate) }}</td>
             <td>{{ order.reference || '-' }}</td>
             <td>{{ order.status }}</td>
@@ -60,14 +71,29 @@
 <script setup lang="ts">
 const api = useApi()
 const orders = ref([])
+const vendors = ref([])
+const vendorFilter = ref('')
 const showForm = ref(false)
 const editingOrder = ref(null)
 const showReceiveForm = ref(false)
 const receivingOrder = ref(null)
 
+const loadVendors = async () => {
+  try {
+    const response = await api.getVendors()
+    vendors.value = response?.vendors || response || []
+  } catch (error) {
+    console.error('Failed to load vendors:', error)
+  }
+}
+
 const loadOrders = async () => {
   try {
-    orders.value = await api.getPurchaseOrders()
+    let url = '/api/purchase-orders'
+    if (vendorFilter.value) {
+      url += `?vendorId=${vendorFilter.value}`
+    }
+    orders.value = await $fetch(url)
   } catch (error) {
     console.error('Failed to load purchase orders:', error)
   }
@@ -114,8 +140,10 @@ const handleSave = async (order: any) => {
     showForm.value = false
     editingOrder.value = null
     await loadOrders()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to save order:', error)
+    const errorMessage = error?.data?.error || error?.message || 'Unknown error'
+    alert('Failed to save order: ' + errorMessage)
   }
 }
 
@@ -137,6 +165,7 @@ const formatDate = (date: string) => {
 }
 
 onMounted(() => {
+  loadVendors()
   loadOrders()
 })
 </script>

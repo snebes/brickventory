@@ -7,12 +7,14 @@ namespace App\Command;
 use App\Entity\Item;
 use App\Entity\PurchaseOrder;
 use App\Entity\PurchaseOrderLine;
+use App\Entity\Vendor;
 use App\Event\PurchaseOrderCreatedEvent;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -37,6 +39,40 @@ class CreatePurchaseOrderCommand extends Command
 
         // Ask for purchase order reference
         $io->section('Create Purchase Order');
+
+        // Ask for vendor (required per NetSuite ERP model)
+        $vendors = $this->entityManager->getRepository(Vendor::class)
+            ->findBy(['active' => true], ['vendorName' => 'ASC']);
+
+        if (empty($vendors)) {
+            $io->error('No active vendors found. Please create a vendor first.');
+            return Command::FAILURE;
+        }
+
+        $vendorChoices = [];
+        foreach ($vendors as $vendor) {
+            $vendorChoices[$vendor->vendorCode] = "{$vendor->vendorCode} - {$vendor->vendorName}";
+        }
+
+        $vendorQuestion = new ChoiceQuestion(
+            'Select vendor (required): ',
+            array_values($vendorChoices)
+        );
+        $vendorQuestion->setErrorMessage('Vendor %s is invalid.');
+
+        $selectedVendorDisplay = $helper->ask($input, $output, $vendorQuestion);
+        
+        // Find the selected vendor
+        $selectedVendorCode = array_search($selectedVendorDisplay, $vendorChoices);
+        $selectedVendor = $this->entityManager->getRepository(Vendor::class)
+            ->findOneBy(['vendorCode' => $selectedVendorCode]);
+
+        if (!$selectedVendor) {
+            $io->error('Invalid vendor selected.');
+            return Command::FAILURE;
+        }
+
+        $io->success("Vendor selected: {$selectedVendor->vendorName}");
         
         $referenceQuestion = new Question('Enter purchase order reference: ');
         $reference = $helper->ask($input, $output, $referenceQuestion);
@@ -51,10 +87,16 @@ class CreatePurchaseOrderCommand extends Command
 
         // Create the purchase order
         $purchaseOrder = new PurchaseOrder();
+        $purchaseOrder->vendor = $selectedVendor;
         $purchaseOrder->orderNumber = $orderNumber;
         $purchaseOrder->reference = $reference;
         $purchaseOrder->orderDate = new \DateTime();
-        $purchaseOrder->status = 'pending';
+        $purchaseOrder->status = 'Pending Approval';
+
+        // Auto-populate vendor defaults
+        $purchaseOrder->paymentTerms = $selectedVendor->defaultPaymentTerms;
+        $purchaseOrder->currency = $selectedVendor->defaultCurrency;
+        $purchaseOrder->billToAddress = $selectedVendor->billingAddress;
 
         $io->writeln('');
         $io->writeln('Enter line items in format: <info>itemId/SKU quantity rate</info>');
@@ -121,6 +163,9 @@ class CreatePurchaseOrderCommand extends Command
             return Command::FAILURE;
         }
 
+        // Calculate totals
+        $purchaseOrder->calculateTotals();
+
         // Persist the purchase order
         $this->entityManager->persist($purchaseOrder);
         $this->entityManager->flush();
@@ -132,6 +177,7 @@ class CreatePurchaseOrderCommand extends Command
         $io->success([
             'Purchase Order created successfully!',
             "Order Number: {$orderNumber}",
+            "Vendor: {$selectedVendor->vendorName}",
             "Reference: {$reference}",
             "Total Lines: " . $purchaseOrder->lines->count()
         ]);

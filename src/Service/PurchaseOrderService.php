@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\PurchaseOrder;
 use App\Entity\PurchaseOrderLine;
+use App\Entity\Vendor;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -19,6 +20,34 @@ class PurchaseOrderService
     }
 
     /**
+     * Validate a purchase order according to NetSuite ERP rules
+     * 
+     * @throws \RuntimeException if validation fails
+     */
+    public function validatePurchaseOrder(PurchaseOrder $po): bool
+    {
+        // Validate vendor exists in database (refresh from DB to ensure it's valid)
+        $vendor = $this->entityManager->getRepository(Vendor::class)->find($po->vendor->id);
+        if (!$vendor) {
+            throw new \RuntimeException('Invalid vendor specified');
+        }
+
+        // Validate vendor is active
+        if (!$vendor->active) {
+            throw new \RuntimeException('Cannot create PO with inactive vendor');
+        }
+
+        // Validate multi-currency
+        if ($po->currency && $vendor->defaultCurrency && $po->currency !== $vendor->defaultCurrency) {
+            if (!$po->exchangeRate) {
+                throw new \RuntimeException('Exchange rate required for multi-currency PO');
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Approve a purchase order
      */
     public function approvePurchaseOrder(PurchaseOrder $po, int $approverId): void
@@ -26,6 +55,9 @@ class PurchaseOrderService
         if ($po->status !== 'Pending Approval') {
             throw new \RuntimeException('Purchase order is not in Pending Approval status');
         }
+
+        // Validate PO before approval
+        $this->validatePurchaseOrder($po);
 
         $po->status = 'Pending Receipt';
         $po->approvedBy = $approverId;
