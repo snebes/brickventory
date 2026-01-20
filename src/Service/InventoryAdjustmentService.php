@@ -365,6 +365,8 @@ class InventoryAdjustmentService
      * @param float $writeDownPercent Write-down percentage (0-100)
      * @param string $reason Reason for the write-down
      * @return InventoryAdjustment The created adjustment
+     * @throws \InvalidArgumentException If item not found, location not found/inactive, or invalid percentage
+     * @note Location validation is performed by the internal createCostRevaluation() call
      */
     public function createWriteDown(
         int $itemId,
@@ -385,6 +387,7 @@ class InventoryAdjustmentService
         $currentCost = $this->fifoLayerService->getAverageCost($item, $locationId);
         $newCost = $currentCost * (1 - $writeDownPercent / 100);
 
+        // Location validation is performed by createCostRevaluation()
         return $this->createCostRevaluation($itemId, $locationId, $newCost, "Write-down {$writeDownPercent}%: {$reason}");
     }
 
