@@ -26,12 +26,7 @@ class PurchaseOrderService
      */
     public function validatePurchaseOrder(PurchaseOrder $po): bool
     {
-        // Vendor is required
-        if (!isset($po->vendor)) {
-            throw new \RuntimeException('Vendor is required for Purchase Order');
-        }
-
-        // Validate vendor exists
+        // Validate vendor exists in database (refresh from DB to ensure it's valid)
         $vendor = $this->entityManager->getRepository(Vendor::class)->find($po->vendor->id);
         if (!$vendor) {
             throw new \RuntimeException('Invalid vendor specified');
