@@ -17,6 +17,7 @@ use App\Repository\CostLayerRepository;
  */
 #[ORM\Entity(repositoryClass: CostLayerRepository::class)]
 #[ORM\Index(columns: ['item_id', 'receipt_date'])]
+#[ORM\Index(columns: ['vendor_id'], name: 'idx_cost_layer_vendor')]
 class CostLayer
 {
     #[ORM\Id]
@@ -50,10 +51,22 @@ class CostLayer
     public int $quantityRemaining = 0;
 
     /**
-     * Cost per unit for this cost layer (from purchase order rate)
+     * Cost per unit for this cost layer (original cost + landed cost adjustments)
      */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
     public float $unitCost = 0.0;
+
+    /**
+     * Original cost per unit before landed cost adjustments
+     */
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    public float $originalUnitCost = 0.0;
+
+    /**
+     * Total landed cost adjustments per unit
+     */
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    public float $landedCostAdjustments = 0.0;
 
     /**
      * Date this cost layer was created (used for FIFO ordering)
@@ -61,6 +74,19 @@ class CostLayer
     #[ORM\Column(type: 'datetime')]
     #[Validate\NotNull]
     public \DateTimeInterface $receiptDate;
+
+    /**
+     * Vendor this cost layer was received from
+     */
+    #[ORM\ManyToOne(targetEntity: Vendor::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public ?Vendor $vendor = null;
+
+    /**
+     * Timestamp of last cost adjustment (for audit trail)
+     */
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    public ?\DateTimeInterface $lastCostAdjustment = null;
 
     public function __construct()
     {
@@ -92,5 +118,15 @@ class CostLayer
             'consumed' => $consumed,
             'cost' => $cost,
         ];
+    }
+
+    /**
+     * Apply landed cost adjustment to this layer
+     */
+    public function applyLandedCost(float $perUnitAdjustment): void
+    {
+        $this->landedCostAdjustments += $perUnitAdjustment;
+        $this->unitCost = $this->originalUnitCost + $this->landedCostAdjustments;
+        $this->lastCostAdjustment = new \DateTime();
     }
 }
