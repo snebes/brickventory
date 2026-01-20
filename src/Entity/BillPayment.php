@@ -7,7 +7,6 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -18,16 +17,8 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Index(columns: ['vendor_id'], name: 'idx_payment_vendor')]
 #[ORM\Index(columns: ['status'], name: 'idx_payment_status')]
 #[ORM\Index(columns: ['payment_date'], name: 'idx_payment_date')]
-class BillPayment
+class BillPayment extends AbstractTransactionalEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\Column(type: 'string', length: 55, unique: true)]
     #[Validate\NotBlank]
     public string $paymentNumber = '';
@@ -67,12 +58,6 @@ class BillPayment
     #[ORM\Column(type: 'string', length: 50)]
     public string $status = 'Draft';
 
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $createdAt;
-
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $updatedAt;
-
     /**
      * @var Collection<int, BillPaymentApplication>
      */
@@ -81,10 +66,8 @@ class BillPayment
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->paymentDate = new \DateTime();
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
         $this->applications = new ArrayCollection();
     }
 }

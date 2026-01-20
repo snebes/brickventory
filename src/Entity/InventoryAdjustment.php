@@ -21,7 +21,7 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Entity]
 #[ORM\Index(columns: ['status', 'adjustment_date'])]
 #[ORM\Index(columns: ['adjustment_type', 'status'])]
-class InventoryAdjustment
+class InventoryAdjustment extends AbstractTransactionalEntity
 {
     // Adjustment Type Constants
     public const TYPE_QUANTITY_ADJUSTMENT = 'quantity_adjustment';
@@ -58,14 +58,6 @@ class InventoryAdjustment
         self::STATUS_POSTED,
         self::STATUS_VOID,
     ];
-
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
 
     #[ORM\Column(type: 'string', length: 50, unique: true)]
     #[Validate\NotBlank]
@@ -139,7 +131,7 @@ class InventoryAdjustment
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->adjustmentDate = new \DateTime();
         $this->lines = new ArrayCollection();
     }

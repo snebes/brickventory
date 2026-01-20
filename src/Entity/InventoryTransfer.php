@@ -17,7 +17,7 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Table(name: 'inventory_transfer')]
 #[ORM\Index(columns: ['from_location_id', 'to_location_id', 'status'], name: 'idx_transfer_locations_status')]
 #[ORM\Index(columns: ['status', 'transfer_date'], name: 'idx_transfer_status_date')]
-class InventoryTransfer
+class InventoryTransfer extends AbstractTransactionalEntity
 {
     // Status Constants
     public const STATUS_PENDING = 'pending';
@@ -46,14 +46,6 @@ class InventoryTransfer
         self::TYPE_REPLENISHMENT,
         self::TYPE_RETURN,
     ];
-
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public string $uuid = '';
 
     #[ORM\Column(type: 'string', length: 50, unique: true)]
     public string $transferNumber = '';
@@ -117,12 +109,6 @@ class InventoryTransfer
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $notes = null;
 
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $createdAt;
-
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $updatedAt;
-
     /**
      * @var Collection<int, InventoryTransferLine>
      */
@@ -131,11 +117,9 @@ class InventoryTransfer
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->transferNumber = 'XFER-' . date('Ymd') . '-' . substr((string) microtime(true), -6);
         $this->transferDate = new \DateTime();
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
         $this->lines = new ArrayCollection();
     }
 
@@ -179,7 +163,7 @@ class InventoryTransfer
         $this->status = self::STATUS_IN_TRANSIT;
         $this->shippedBy = $shippedBy;
         $this->shippedAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
+        $this->touch();
     }
 
     /**
@@ -190,7 +174,7 @@ class InventoryTransfer
         $this->status = self::STATUS_RECEIVED;
         $this->receivedBy = $receivedBy;
         $this->receivedAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
+        $this->touch();
     }
 
     /**
@@ -200,7 +184,7 @@ class InventoryTransfer
     {
         $this->approvedBy = $approvedBy;
         $this->approvedAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
+        $this->touch();
     }
 
     /**
@@ -216,7 +200,7 @@ class InventoryTransfer
         }
 
         $this->status = self::STATUS_CANCELLED;
-        $this->updatedAt = new \DateTime();
+        $this->touch();
     }
 
     /**
@@ -229,13 +213,5 @@ class InventoryTransfer
             $total += $line->totalCost;
         }
         return $total;
-    }
-
-    /**
-     * Update the updatedAt timestamp
-     */
-    public function touch(): void
-    {
-        $this->updatedAt = new \DateTime();
     }
 }

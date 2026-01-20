@@ -7,7 +7,6 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -18,16 +17,8 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Index(columns: ['vendor_id'], name: 'idx_bill_vendor')]
 #[ORM\Index(columns: ['status'], name: 'idx_bill_status')]
 #[ORM\Index(columns: ['due_date'], name: 'idx_bill_due_date')]
-class VendorBill
+class VendorBill extends AbstractTransactionalEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\Column(type: 'string', length: 55, unique: true)]
     #[Validate\NotBlank]
     public string $billNumber = '';
@@ -98,12 +89,6 @@ class VendorBill
     #[ORM\Column(type: 'datetime', nullable: true)]
     public ?\DateTimeInterface $approvedAt = null;
 
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $createdAt;
-
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $updatedAt;
-
     /**
      * @var Collection<int, VendorBillLine>
      */
@@ -112,11 +97,9 @@ class VendorBill
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->billDate = new \DateTime();
         $this->dueDate = new \DateTime('+30 days');
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
         $this->lines = new ArrayCollection();
     }
 
@@ -151,6 +134,6 @@ class VendorBill
             $this->status = 'Partially Paid';
         }
 
-        $this->updatedAt = new \DateTime();
+        $this->touch();
     }
 }

@@ -7,7 +7,6 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -21,7 +20,7 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Entity]
 #[ORM\Index(columns: ['status', 'count_date'])]
 #[ORM\Index(columns: ['location_id', 'status'])]
-class PhysicalCount
+class PhysicalCount extends AbstractTransactionalEntity
 {
     // Count Type Constants
     public const TYPE_FULL_PHYSICAL = 'full_physical';
@@ -48,14 +47,6 @@ class PhysicalCount
         self::STATUS_ADJUSTMENT_CREATED,
         self::STATUS_CANCELLED,
     ];
-
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
 
     #[ORM\Column(type: 'string', length: 50, unique: true)]
     #[Validate\NotBlank]
@@ -96,7 +87,7 @@ class PhysicalCount
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->countDate = new \DateTime();
         $this->lines = new ArrayCollection();
     }
