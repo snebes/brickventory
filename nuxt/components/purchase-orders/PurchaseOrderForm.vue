@@ -64,30 +64,54 @@
       
       <div class="line-items">
         <h4>Line Items</h4>
-        <div v-for="(line, index) in formOrder.lines" :key="index" class="line-item">
-          <div class="form-group">
-            <label>Item *</label>
-            <ItemComboBox 
-              v-model="line.itemId" 
-              required 
-              placeholder="Search for an item..."
-            />
-          </div>
-          
-          <div class="form-group">
-            <label>Quantity *</label>
-            <input v-model.number="line.quantityOrdered" type="number" min="1" required />
-          </div>
-          
-          <div class="form-group">
-            <label>Rate *</label>
-            <input v-model.number="line.rate" type="number" step="0.01" min="0" required />
-          </div>
-          
-          <button type="button" class="btn btn-danger" @click="removeLine(index)">Remove</button>
+        <div class="table-wrapper">
+          <table class="line-items-table">
+            <thead>
+              <tr>
+                <th class="item-col">Item *</th>
+                <th class="quantity-col">Quantity *</th>
+                <th class="rate-col">Rate *</th>
+                <th class="amount-col">Amount</th>
+                <th class="actions-col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(line, index) in formOrder.lines" :key="index">
+                <td class="item-col">
+                  <ItemComboBox 
+                    v-model="line.itemId" 
+                    required 
+                    placeholder="Search for an item..."
+                  />
+                </td>
+                <td class="quantity-col">
+                  <input v-model.number="line.quantityOrdered" type="number" min="1" required class="quantity-input" />
+                </td>
+                <td class="rate-col">
+                  <div class="currency-input">
+                    <span class="currency-symbol">$</span>
+                    <input v-model.number="line.rate" type="number" step="0.01" min="0" required />
+                  </div>
+                </td>
+                <td class="amount-col">
+                  {{ formatCurrency((line.quantityOrdered || 0) * (line.rate || 0)) }}
+                </td>
+                <td class="actions-col">
+                  <button type="button" class="btn btn-danger btn-small" @click="removeLine(index)">Remove</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        
-        <button type="button" class="btn btn-secondary" @click="addLine">Add Line</button>
+        <div v-if="formOrder.lines.length === 0" class="no-items">
+          No items added yet. Click "Add Line" to add items.
+        </div>
+        <div class="line-items-footer">
+          <button type="button" class="btn btn-secondary" @click="addLine">Add Line</button>
+          <div v-if="formOrder.lines.length > 0" class="total-amount">
+            <strong>Total: {{ formatCurrency(calculateTotal()) }}</strong>
+          </div>
+        </div>
       </div>
       
       <div class="actions" style="margin-top: 20px;">
@@ -189,6 +213,21 @@ const removeLine = (index: number) => {
   formOrder.value.lines.splice(index, 1)
 }
 
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(amount || 0)
+}
+
+const calculateTotal = (): number => {
+  return formOrder.value.lines.reduce((sum, line) => {
+    const qty = line.quantityOrdered || 0
+    const rate = line.rate || 0
+    return sum + (qty * rate)
+  }, 0)
+}
+
 const save = () => {
   if (!formOrder.value.vendorId) {
     alert('Vendor is required. Please select a vendor before saving the Purchase Order.')
@@ -222,5 +261,145 @@ onMounted(() => {
   margin-top: 5px;
   font-size: 0.85em;
   color: #666;
+}
+
+.line-items {
+  margin-top: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #fafafa;
+}
+
+.line-items h4 {
+  margin-bottom: 15px;
+  color: #2c3e50;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 15px;
+}
+
+.line-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.line-items-table th {
+  background: #2c3e50;
+  color: white;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.line-items-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  vertical-align: middle;
+}
+
+.line-items-table tbody tr:hover {
+  background-color: #f5f8fa;
+}
+
+.line-items-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.item-col {
+  width: 40%;
+  min-width: 200px;
+}
+
+.quantity-col {
+  width: 15%;
+  min-width: 100px;
+}
+
+.rate-col {
+  width: 18%;
+  min-width: 120px;
+}
+
+.amount-col {
+  width: 15%;
+  min-width: 100px;
+  text-align: right;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.actions-col {
+  width: 12%;
+  min-width: 80px;
+  text-align: center;
+}
+
+.quantity-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.currency-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  overflow: hidden;
+}
+
+.currency-input .currency-symbol {
+  padding: 8px 10px;
+  background: #f0f0f0;
+  color: #666;
+  font-weight: 500;
+  border-right: 1px solid #ddd;
+}
+
+.currency-input input {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  width: 100%;
+}
+
+.currency-input input:focus {
+  box-shadow: inset 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.no-items {
+  text-align: center;
+  padding: 20px;
+  color: #95a5a6;
+  font-style: italic;
+}
+
+.line-items-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #ddd;
+}
+
+.total-amount {
+  font-size: 16px;
+  color: #2c3e50;
 }
 </style>
