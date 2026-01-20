@@ -14,16 +14,8 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Table(name: 'purchase_order')]
 #[ORM\Index(columns: ['vendor_id'], name: 'idx_po_vendor')]
 #[ORM\Index(columns: ['status'], name: 'idx_po_status')]
-class PurchaseOrder
+class PurchaseOrder extends AbstractTransactionalEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\Column(type: 'string', length: 55, unique: true)]
     #[Validate\NotBlank]
     public string $orderNumber = '';
@@ -109,7 +101,7 @@ class PurchaseOrder
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->orderDate = new \DateTime();
         $this->lines = new ArrayCollection();
     }

@@ -16,7 +16,7 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Table(name: 'location')]
 #[ORM\Index(columns: ['location_code'], name: 'idx_location_code')]
 #[ORM\Index(columns: ['location_type', 'active'], name: 'idx_location_type_active')]
-class Location
+class Location extends AbstractMasterDataEntity
 {
     // Location Type Constants
     public const TYPE_WAREHOUSE = 'warehouse';
@@ -33,14 +33,6 @@ class Location
         self::TYPE_VENDOR_LOCATION,
     ];
 
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public string $uuid = '';
-
     #[ORM\Column(type: 'string', length: 50, unique: true)]
     #[Validate\NotBlank]
     public string $locationCode = '';
@@ -52,9 +44,6 @@ class Location
     #[ORM\Column(type: 'string', length: 50)]
     #[Validate\Choice(choices: self::VALID_TYPES)]
     public string $locationType = self::TYPE_WAREHOUSE;
-
-    #[ORM\Column(type: 'boolean')]
-    public bool $active = true;
 
     // Address information
     #[ORM\Column(type: 'json', nullable: true)]
@@ -102,18 +91,9 @@ class Location
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     public ?string $contactEmail = null;
 
-    // Timestamps
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $createdAt;
-
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $updatedAt;
-
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
+        parent::__construct();
     }
 
     /**
@@ -138,13 +118,5 @@ class Location
     public function requiresBinManagement(): bool
     {
         return $this->useBinManagement;
-    }
-
-    /**
-     * Update the updatedAt timestamp
-     */
-    public function touch(): void
-    {
-        $this->updatedAt = new \DateTime();
     }
 }

@@ -14,16 +14,8 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Table(name: 'item_receipt')]
 #[ORM\Index(columns: ['vendor_id'], name: 'idx_receipt_vendor')]
 #[ORM\Index(columns: ['status'], name: 'idx_receipt_status')]
-class ItemReceipt
+class ItemReceipt extends AbstractTransactionalEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: PurchaseOrder::class)]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -86,7 +78,7 @@ class ItemReceipt
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->receiptDate = new \DateTime();
         $this->lines = new ArrayCollection();
     }

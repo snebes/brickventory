@@ -7,7 +7,6 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -16,7 +15,7 @@ use Symfony\Component\Validator\Constraints as Validate;
  * Status Progression: Picked → Packed → Shipped → Delivered
  */
 #[ORM\Entity]
-class ItemFulfillment
+class ItemFulfillment extends AbstractTransactionalEntity
 {
     // Status constants following NetSuite fulfillment workflow
     public const STATUS_PICKED = 'picked';
@@ -31,14 +30,6 @@ class ItemFulfillment
         self::STATUS_SHIPPED,
         self::STATUS_DELIVERED,
     ];
-
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public string $uuid = '';
 
     /**
      * Auto-generated fulfillment number for tracking.
@@ -101,7 +92,7 @@ class ItemFulfillment
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->fulfillmentNumber = 'IF-' . date('YmdHis') . '-' . substr((string) microtime(true), -4);
         $this->fulfillmentDate = new \DateTime();
         $this->lines = new ArrayCollection();

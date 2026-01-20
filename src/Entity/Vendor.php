@@ -15,16 +15,8 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Table(name: 'vendor')]
 #[ORM\Index(columns: ['vendor_code'], name: 'idx_vendor_code')]
 #[ORM\Index(columns: ['active'], name: 'idx_vendor_active')]
-class Vendor
+class Vendor extends AbstractMasterDataEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\Column(type: 'string', length: 50, unique: true)]
     #[Validate\NotBlank]
     public string $vendorCode = '';
@@ -32,9 +24,6 @@ class Vendor
     #[ORM\Column(type: 'string', length: 255)]
     #[Validate\NotBlank]
     public string $vendorName = '';
-
-    #[ORM\Column(type: 'boolean')]
-    public bool $active = true;
 
     // Contact information
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
@@ -71,25 +60,8 @@ class Vendor
     #[ORM\Column(type: 'boolean')]
     public bool $taxExempt = false;
 
-    // Timestamps
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $createdAt;
-
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $updatedAt;
-
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
-    }
-
-    /**
-     * Update the updatedAt timestamp
-     */
-    public function touch(): void
-    {
-        $this->updatedAt = new \DateTime();
+        parent::__construct();
     }
 }

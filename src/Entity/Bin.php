@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -15,7 +14,7 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Table(name: 'bin')]
 #[ORM\Index(columns: ['location_id', 'bin_code'], name: 'idx_bin_location_code')]
 #[ORM\Index(columns: ['location_id', 'active'], name: 'idx_bin_location_active')]
-class Bin
+class Bin extends AbstractMasterDataEntity
 {
     // Bin Type Constants
     public const TYPE_STORAGE = 'storage';
@@ -35,14 +34,6 @@ class Bin
         self::TYPE_DAMAGE,
         self::TYPE_RETURNS,
     ];
-
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public string $uuid = '';
 
     #[ORM\ManyToOne(targetEntity: Location::class)]
     #[ORM\JoinColumn(nullable: false)]
@@ -76,9 +67,6 @@ class Bin
     #[ORM\Column(type: 'string', length: 20, nullable: true)]
     public ?string $level = null;
 
-    #[ORM\Column(type: 'boolean')]
-    public bool $active = true;
-
     // Capacity management
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
     public ?float $capacity = null;
@@ -96,17 +84,9 @@ class Bin
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $notes = null;
 
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $createdAt;
-
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $updatedAt;
-
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
+        parent::__construct();
     }
 
     /**
@@ -159,13 +139,5 @@ class Bin
         ]);
 
         return implode('-', $parts) ?: $this->binCode;
-    }
-
-    /**
-     * Update the updatedAt timestamp
-     */
-    public function touch(): void
-    {
-        $this->updatedAt = new \DateTime();
     }
 }

@@ -7,7 +7,6 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -17,16 +16,8 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Table(name: 'landed_cost')]
 #[ORM\Index(columns: ['item_receipt_id'], name: 'idx_landed_cost_receipt')]
 #[ORM\Index(columns: ['vendor_bill_id'], name: 'idx_landed_cost_bill')]
-class LandedCost
+class LandedCost extends AbstractTransactionalEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\Column(type: 'string', length: 55, unique: true)]
     #[Validate\NotBlank]
     public string $landedCostNumber = '';
@@ -63,7 +54,7 @@ class LandedCost
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->appliedDate = new \DateTime();
         $this->allocations = new ArrayCollection();
     }

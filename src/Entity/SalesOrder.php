@@ -16,7 +16,7 @@ use Symfony\Component\Validator\Constraints as Validate;
  * Status Progression: Pending Approval → Pending Fulfillment → Partially Fulfilled → Fulfilled → Billed → Closed/Cancelled
  */
 #[ORM\Entity(repositoryClass: \App\Repository\SalesOrderRepository::class)]
-class SalesOrder
+class SalesOrder extends AbstractTransactionalEntity
 {
     // Status constants following NetSuite workflow
     public const STATUS_PENDING_APPROVAL = 'pending_approval';
@@ -37,14 +37,6 @@ class SalesOrder
         self::STATUS_CLOSED,
         self::STATUS_CANCELLED,
     ];
-
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
 
     #[ORM\Column(type: 'string', length: 55, unique: true)]
     #[Validate\NotBlank]
@@ -82,7 +74,7 @@ class SalesOrder
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->orderDate = new \DateTime();
         $this->lines = new ArrayCollection();
         $this->fulfillments = new ArrayCollection();
