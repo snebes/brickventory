@@ -27,20 +27,18 @@ class SalesOrderRepository extends ServiceEntityRepository
         $prefix = 'SO';
         $minDigits = 3;
 
-        // Find the highest existing order number
+        // Find all existing order numbers with correct format to determine the max
         $result = $this->createQueryBuilder('so')
             ->select('so.orderNumber')
             ->where('so.orderNumber LIKE :prefix')
             ->setParameter('prefix', $prefix . '%')
-            ->orderBy('so.orderNumber', 'DESC')
-            ->setMaxResults(100)
             ->getQuery()
             ->getResult();
 
         $maxNumber = 0;
         foreach ($result as $row) {
             $orderNumber = $row['orderNumber'];
-            // Extract the numeric part after the prefix
+            // Extract the numeric part after the prefix (only exact format SO followed by digits)
             if (preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $orderNumber, $matches)) {
                 $number = (int) $matches[1];
                 if ($number > $maxNumber) {

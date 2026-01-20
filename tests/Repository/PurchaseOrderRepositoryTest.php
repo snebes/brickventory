@@ -7,10 +7,7 @@ namespace App\Tests\Repository;
 use App\Entity\PurchaseOrder;
 use App\Repository\PurchaseOrderRepository;
 use Doctrine\ORM\AbstractQuery;
-use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
-use Doctrine\ORM\Mapping\ClassMetadata;
-use Doctrine\Persistence\ManagerRegistry;
 use PHPUnit\Framework\TestCase;
 
 class PurchaseOrderRepositoryTest extends TestCase
@@ -28,8 +25,6 @@ class PurchaseOrderRepositoryTest extends TestCase
         $queryBuilder->method('select')->willReturnSelf();
         $queryBuilder->method('where')->willReturnSelf();
         $queryBuilder->method('setParameter')->willReturnSelf();
-        $queryBuilder->method('orderBy')->willReturnSelf();
-        $queryBuilder->method('setMaxResults')->willReturnSelf();
         $queryBuilder->method('getQuery')->willReturn($query);
         
         $repository = $this->createPartialMock(PurchaseOrderRepository::class, ['createQueryBuilder']);
@@ -61,8 +56,6 @@ class PurchaseOrderRepositoryTest extends TestCase
         $queryBuilder->method('select')->willReturnSelf();
         $queryBuilder->method('where')->willReturnSelf();
         $queryBuilder->method('setParameter')->willReturnSelf();
-        $queryBuilder->method('orderBy')->willReturnSelf();
-        $queryBuilder->method('setMaxResults')->willReturnSelf();
         $queryBuilder->method('getQuery')->willReturn($query);
         
         $repository = $this->createPartialMock(PurchaseOrderRepository::class, ['createQueryBuilder']);
@@ -95,8 +88,6 @@ class PurchaseOrderRepositoryTest extends TestCase
         $queryBuilder->method('select')->willReturnSelf();
         $queryBuilder->method('where')->willReturnSelf();
         $queryBuilder->method('setParameter')->willReturnSelf();
-        $queryBuilder->method('orderBy')->willReturnSelf();
-        $queryBuilder->method('setMaxResults')->willReturnSelf();
         $queryBuilder->method('getQuery')->willReturn($query);
         
         $repository = $this->createPartialMock(PurchaseOrderRepository::class, ['createQueryBuilder']);
@@ -126,8 +117,6 @@ class PurchaseOrderRepositoryTest extends TestCase
         $queryBuilder->method('select')->willReturnSelf();
         $queryBuilder->method('where')->willReturnSelf();
         $queryBuilder->method('setParameter')->willReturnSelf();
-        $queryBuilder->method('orderBy')->willReturnSelf();
-        $queryBuilder->method('setMaxResults')->willReturnSelf();
         $queryBuilder->method('getQuery')->willReturn($query);
         
         $repository = $this->createPartialMock(PurchaseOrderRepository::class, ['createQueryBuilder']);
