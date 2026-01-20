@@ -1,7 +1,7 @@
 <template>
   <div class="card">
     <h3>{{ formOrder.id ? 'Edit' : 'Create' }} Purchase Order</h3>
-    
+
     <form @submit.prevent="save">
       <div class="form-group">
         <label>Vendor *</label>
@@ -27,7 +27,7 @@
 
       <div class="form-group">
         <label>Receiving Location *</label>
-        <LocationSelector
+        <location-selector
           v-model="formOrder.locationId"
           :required="true"
           :disabled="isLocationLocked"
@@ -51,12 +51,12 @@
         <label>Order Number (optional)</label>
         <input v-model="formOrder.orderNumber" type="text" placeholder="Auto-generated if left empty" />
       </div>
-      
+
       <div class="form-group">
         <label>Order Date *</label>
         <input v-model="formOrder.orderDate" type="date" required />
       </div>
-      
+
       <div class="form-group">
         <label>Status *</label>
         <select v-model="formOrder.status" required>
@@ -68,7 +68,7 @@
           <option value="Cancelled">Cancelled</option>
         </select>
       </div>
-      
+
       <div class="form-group">
         <label>Reference</label>
         <input v-model="formOrder.reference" type="text" placeholder="Vendor reference, PO number, etc." />
@@ -78,12 +78,12 @@
         <label>Expected Receipt Date</label>
         <input v-model="formOrder.expectedReceiptDate" type="date" />
       </div>
-      
+
       <div class="form-group">
         <label>Notes</label>
         <textarea v-model="formOrder.notes" placeholder="Additional notes..."></textarea>
       </div>
-      
+
       <div class="line-items">
         <h4>Line Items</h4>
         <div class="table-wrapper">
@@ -100,9 +100,9 @@
             <tbody>
               <tr v-for="(line, index) in formOrder.lines" :key="index">
                 <td class="item-col">
-                  <ItemComboBox 
-                    v-model="line.itemId" 
-                    required 
+                  <ItemComboBox
+                    v-model="line.itemId"
+                    required
                     placeholder="Search for an item..."
                   />
                 </td>
@@ -135,7 +135,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="actions" style="margin-top: 20px;">
         <button type="submit" class="btn btn-success" :disabled="!formOrder.vendorId || !formOrder.locationId">Save</button>
         <button type="button" class="btn btn-secondary" @click="$emit('cancel')">Cancel</button>
@@ -146,6 +146,7 @@
 
 <script setup lang="ts">
 import { parseApiDateForInput } from '~/utils/dateUtils'
+import LocationSelector from "~/components/locations/LocationSelector.vue";
 
 const props = defineProps<{
   order?: any

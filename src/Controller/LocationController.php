@@ -30,13 +30,13 @@ class LocationController extends AbstractController
     {
         $type = $request->query->get('type');
         $active = $request->query->get('active');
-        
+
         if ($type) {
             $activeOnly = $active !== null ? filter_var($active, FILTER_VALIDATE_BOOLEAN) : null;
             $locations = $this->locationRepository->findByType($type, $activeOnly);
         } elseif ($active !== null) {
             $isActive = filter_var($active, FILTER_VALIDATE_BOOLEAN);
-            $locations = $isActive 
+            $locations = $isActive
                 ? $this->locationRepository->findActiveLocations()
                 : $this->locationRepository->findBy(['active' => false]);
         } else {
@@ -74,11 +74,11 @@ class LocationController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}', name: 'get', methods: ['GET'])]
+    #[Route('/{id<\d+>}', name: 'get', methods: ['GET'])]
     public function get(int $id): JsonResponse
     {
         $location = $this->locationRepository->find($id);
-        
+
         if (!$location) {
             return $this->json(['error' => 'Location not found'], 404);
         }
