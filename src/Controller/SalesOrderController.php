@@ -95,7 +95,8 @@ class SalesOrderController extends AbstractController
                 $so->orderNumber = $data['orderNumber'];
             }
             $so->orderDate = new \DateTime($data['orderDate'] ?? 'now');
-            $so->status = $data['status'] ?? 'pending';
+            // Use new status constants, default to pending_fulfillment
+            $so->status = $data['status'] ?? SalesOrder::STATUS_PENDING_FULFILLMENT;
             $so->notes = $data['notes'] ?? null;
 
             $lines = $data['lines'] ?? [];
@@ -122,6 +123,7 @@ class SalesOrderController extends AbstractController
 
             return $this->json([
                 'id' => $so->id,
+                'orderNumber' => $so->orderNumber,
                 'message' => 'Sales order created successfully'
             ], Response::HTTP_CREATED);
         } catch (\InvalidArgumentException $e) {
@@ -224,6 +226,9 @@ class SalesOrderController extends AbstractController
             'orderDate' => $so->orderDate->format('Y-m-d H:i:s'),
             'status' => $so->status,
             'notes' => $so->notes,
+            'canBeFulfilled' => $so->canBeFulfilled(),
+            'isFullyFulfilled' => $so->isFullyFulfilled(),
+            'isPartiallyFulfilled' => $so->isPartiallyFulfilled(),
             'lines' => array_map(function (SalesOrderLine $line) {
                 return [
                     'id' => $line->id,
@@ -233,10 +238,12 @@ class SalesOrderController extends AbstractController
                         'itemName' => $line->item->itemName,
                     ],
                     'quantityOrdered' => $line->quantityOrdered,
+                    'quantityCommitted' => $line->quantityCommitted,
                     'quantityFulfilled' => $line->quantityFulfilled,
+                    'quantityBilled' => $line->quantityBilled,
+                    'quantityRemaining' => $line->getQuantityRemaining(),
                 ];
             }, $so->lines->toArray()),
         ];
     }
 }
-
