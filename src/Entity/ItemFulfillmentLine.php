@@ -23,7 +23,7 @@ class ItemFulfillmentLine
     public int $id;
 
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
+    public string $uuid = '';
 
     #[ORM\ManyToOne(targetEntity: ItemFulfillment::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]

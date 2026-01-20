@@ -38,7 +38,7 @@ class ItemFulfillment
     public int $id;
 
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
+    public string $uuid = '';
 
     /**
      * Auto-generated fulfillment number for tracking.
@@ -50,6 +50,13 @@ class ItemFulfillment
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
     public SalesOrder $salesOrder;
+
+    /**
+     * Location from which items are fulfilled
+     */
+    #[ORM\ManyToOne(targetEntity: Location::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public ?Location $fulfillFromLocation = null;
 
     #[ORM\Column(type: 'datetime')]
     #[Validate\NotNull]

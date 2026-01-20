@@ -51,8 +51,9 @@ class PurchaseOrder
     public ?\DateTimeInterface $expectedReceiptDate = null;
 
     // Location
-    #[ORM\Column(type: 'integer', nullable: true)]
-    public ?int $shipToLocationId = null;
+    #[ORM\ManyToOne(targetEntity: Location::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public ?Location $shipToLocation = null;
 
     // Address
     #[ORM\Column(type: 'json', nullable: true)]

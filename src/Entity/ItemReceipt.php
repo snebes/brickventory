@@ -22,7 +22,7 @@ class ItemReceipt
     public int $id;
 
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
+    public string $uuid = '';
 
     #[ORM\ManyToOne(targetEntity: PurchaseOrder::class)]
     #[ORM\JoinColumn(nullable: false)]
@@ -45,8 +45,9 @@ class ItemReceipt
     public ?Vendor $vendor = null;
 
     // Location
-    #[ORM\Column(type: 'integer', nullable: true)]
-    public ?int $receivedAtLocationId = null;
+    #[ORM\ManyToOne(targetEntity: Location::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public ?Location $receivedAtLocation = null;
 
     // Shipping information
     #[ORM\Column(type: 'string', length: 100, nullable: true)]
