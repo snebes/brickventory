@@ -62,9 +62,9 @@ class PurchaseOrderService
         $qb->select('l')
             ->from(\App\Entity\Location::class, 'l')
             ->where('l.active = :active')
-            ->andWhere('l.makeInventoryAvailable = :makeAvailable')
+            ->andWhere('l.makeInventoryAvailable = :makeInventoryAvailable')
             ->setParameter('active', true)
-            ->setParameter('makeAvailable', true)
+            ->setParameter('makeInventoryAvailable', true)
             ->setMaxResults(1);
 
         return $qb->getQuery()->getOneOrNullResult();

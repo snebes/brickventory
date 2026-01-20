@@ -73,7 +73,7 @@ class PurchaseOrderCreatedEventHandler
             );
             
             // DEPRECATED: Update item-level quantityOnOrder (for backward compatibility)
-            // This will eventually be removed in favor of location-specific balances
+            // This will be removed in favor of location-specific balances in a future version
             $item->quantityOnOrder += $line->quantityOrdered;
             $this->entityManager->persist($item);
         }
