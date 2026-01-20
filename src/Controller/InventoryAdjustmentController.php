@@ -211,7 +211,7 @@ class InventoryAdjustmentController extends AbstractController
             // Handle location change
             if (isset($data['locationId'])) {
                 $newLocationId = (int) $data['locationId'];
-                $currentLocationId = $adjustment->location->id;
+                $currentLocationId = $adjustment->location?->id;
 
                 if ($newLocationId !== $currentLocationId) {
                     $newLocation = $this->entityManager->getRepository(\App\Entity\Location::class)->find($newLocationId);

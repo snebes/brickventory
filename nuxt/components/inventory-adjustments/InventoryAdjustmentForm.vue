@@ -146,6 +146,8 @@
 </template>
 
 <script setup lang="ts">
+import { parseApiDateForInput } from '~/utils/dateUtils'
+
 interface Item {
   id: number
   itemId: string
@@ -228,7 +230,7 @@ watch(() => props.adjustment, (newAdjustment) => {
     formData.value = {
       id: newAdjustment.id,
       adjustmentNumber: newAdjustment.adjustmentNumber,
-      adjustmentDate: newAdjustment.adjustmentDate.split(' ')[0], // Handle datetime format
+      adjustmentDate: parseApiDateForInput(newAdjustment.adjustmentDate),
       locationId: newAdjustment.location?.id || null,
       reason: newAdjustment.reason,
       memo: newAdjustment.memo || '',
