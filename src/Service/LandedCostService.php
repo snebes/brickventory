@@ -39,9 +39,9 @@ class LandedCostService
 
         // Allocate cost based on method
         $allocations = match ($allocationMethod) {
-            'Quantity' => $this->allocateByQuantity($receipt, $totalCost),
-            'Weight' => $this->allocateByWeight($receipt, $totalCost),
-            default => $this->allocateByValue($receipt, $totalCost),
+            'Quantity' => $this->allocateByQuantity($receipt, $totalCost, $landedCost),
+            'Weight' => $this->allocateByWeight($receipt, $totalCost, $landedCost),
+            default => $this->allocateByValue($receipt, $totalCost, $landedCost),
         };
 
         // Create allocation records and update cost layers
@@ -61,7 +61,7 @@ class LandedCostService
     /**
      * Allocate landed cost by value (item cost * quantity)
      */
-    private function allocateByValue(ItemReceipt $receipt, float $totalCost): array
+    private function allocateByValue(ItemReceipt $receipt, float $totalCost, LandedCost $landedCost): array
     {
         $allocations = [];
         $totalValue = 0.0;
@@ -85,7 +85,7 @@ class LandedCostService
                 $allocatedAmount = $totalCost * $percentage;
 
                 $allocation = new LandedCostAllocation();
-                $allocation->landedCost = null; // Will be set by caller
+                $allocation->landedCost = $landedCost;
                 $allocation->receiptLine = $line;
                 $allocation->costLayer = $line->costLayer;
                 $allocation->item = $line->item;
@@ -106,7 +106,7 @@ class LandedCostService
     /**
      * Allocate landed cost by quantity
      */
-    private function allocateByQuantity(ItemReceipt $receipt, float $totalCost): array
+    private function allocateByQuantity(ItemReceipt $receipt, float $totalCost, LandedCost $landedCost): array
     {
         $allocations = [];
         $totalQuantity = 0;
@@ -129,6 +129,7 @@ class LandedCostService
                 $allocatedAmount = $totalCost * $percentage;
 
                 $allocation = new LandedCostAllocation();
+                $allocation->landedCost = $landedCost;
                 $allocation->receiptLine = $line;
                 $allocation->costLayer = $line->costLayer;
                 $allocation->item = $line->item;
@@ -149,11 +150,11 @@ class LandedCostService
     /**
      * Allocate landed cost by weight (requires item weight data)
      */
-    private function allocateByWeight(ItemReceipt $receipt, float $totalCost): array
+    private function allocateByWeight(ItemReceipt $receipt, float $totalCost, LandedCost $landedCost): array
     {
         // For now, fall back to quantity-based allocation
         // In a full implementation, this would use item.weight * quantity
-        return $this->allocateByQuantity($receipt, $totalCost);
+        return $this->allocateByQuantity($receipt, $totalCost, $landedCost);
     }
 
     /**

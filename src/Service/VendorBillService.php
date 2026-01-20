@@ -119,8 +119,8 @@ class VendorBillService
                 : 0;
             $priceMatch = $priceVariancePct <= $priceTolerance;
 
-            // Check if bill matches receipt
-            $receiptMatch = ($billLine->quantity == $receiptLine->quantityAccepted);
+            // Check if bill matches receipt (using tolerance for float comparison)
+            $receiptMatch = (abs($billLine->quantity - $receiptLine->quantityAccepted) < 0.001);
 
             $lineRequiresApproval = !($qtyMatch && $priceMatch && $receiptMatch);
 

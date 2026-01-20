@@ -95,7 +95,7 @@ class ItemReceiptService
 
         // Process receipt lines
         foreach ($lines as $lineData) {
-            $poLine = $this->entityManager->getRepository($lineData['poLineClass'] ?? 'App\Entity\PurchaseOrderLine')
+            $poLine = $this->entityManager->getRepository(PurchaseOrderLine::class)
                 ->find($lineData['poLineId']);
 
             if (!$poLine) {

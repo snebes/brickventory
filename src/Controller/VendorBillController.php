@@ -130,7 +130,11 @@ class VendorBillController extends AbstractController
                 return $this->json(['error' => 'Vendor bill not found'], Response::HTTP_NOT_FOUND);
             }
 
-            $approverId = $data['approverId'] ?? 1; // TODO: Get from authenticated user
+            $approverId = $data['approverId'] ?? null;
+            
+            if (!$approverId) {
+                return $this->json(['error' => 'approverId is required'], Response::HTTP_BAD_REQUEST);
+            }
             
             $this->vendorBillService->approveBill($bill, $approverId);
 
