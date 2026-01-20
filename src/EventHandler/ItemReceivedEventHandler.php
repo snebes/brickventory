@@ -27,6 +27,13 @@ class ItemReceivedEventHandler
         $quantity = $event->getQuantity();
         $purchaseOrder = $event->getPurchaseOrder();
         $unitCost = $event->getUnitCost();
+        $receiptLine = $event->getReceiptLine();
+
+        // Get location from receipt line
+        $locationId = null;
+        if ($receiptLine && $receiptLine->itemReceipt->receivedAtLocation) {
+            $locationId = $receiptLine->itemReceipt->receivedAtLocation->id;
+        }
 
         // Create event in event store
         $itemEvent = new ItemEvent();
@@ -41,11 +48,13 @@ class ItemReceivedEventHandler
             'unit_cost' => $unitCost,
             'vendor_id' => $purchaseOrder->vendor?->id,
             'vendor_name' => $purchaseOrder->vendor?->vendorName,
+            'location_id' => $locationId,
+            'bin_location' => $receiptLine?->binLocation,
         ]);
 
         $this->entityManager->persist($itemEvent);
 
-        // Note: Cost layer creation, inventory updates are handled by ItemReceiptService
+        // Note: Cost layer creation, inventory balance updates are handled by ItemReceiptService
         // This handler only creates the event record for audit trail
 
         $this->entityManager->flush();

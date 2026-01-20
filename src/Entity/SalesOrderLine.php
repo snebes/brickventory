@@ -20,7 +20,7 @@ class SalesOrderLine
     public int $id;
 
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
+    public string $uuid = '';
 
     #[ORM\ManyToOne(targetEntity: SalesOrder::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
@@ -57,6 +57,19 @@ class SalesOrderLine
      */
     #[ORM\Column(type: 'integer')]
     public int $quantityBilled = 0;
+
+    /**
+     * Location from which to fulfill this line (line-level override)
+     */
+    #[ORM\ManyToOne(targetEntity: Location::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public ?Location $fulfillFromLocation = null;
+
+    /**
+     * Bin location from which to pick (optional)
+     */
+    #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    public ?string $pickFromBinLocation = null;
 
     public function __construct()
     {

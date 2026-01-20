@@ -133,6 +133,12 @@ class CostLayer
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $voidReason = null;
 
+    /**
+     * Reference to transfer number if this layer was created from an inter-location transfer
+     */
+    #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    public ?string $transferReference = null;
+
     public function __construct()
     {
         $this->uuid = Ulid::generate();

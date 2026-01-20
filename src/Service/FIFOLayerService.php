@@ -57,7 +57,7 @@ class FIFOLayerService
      * Consume layers using FIFO (First In, First Out) method
      *
      * @param Item $item The item to consume layers for
-     * @param int|null $locationId Optional location ID for filtering
+     * @param int|null $locationId Location ID for location-specific FIFO
      * @param int $quantity Quantity to consume
      * @param string $transactionType Type of transaction consuming the layers
      * @param int $transactionId ID of the transaction
@@ -74,7 +74,7 @@ class FIFOLayerService
             throw new \InvalidArgumentException('Quantity to consume must be positive');
         }
 
-        // Get available layers ordered by FIFO (oldest first)
+        // Get available layers ordered by FIFO (oldest first), filtered by location
         $layers = $this->getLayersByItem($item, $locationId, 'fifo');
         
         $remainingToConsume = $quantity;
@@ -192,7 +192,7 @@ class FIFOLayerService
      * Get cost layers for an item
      *
      * @param Item $item The item to get layers for
-     * @param int|null $locationId Optional location ID for filtering
+     * @param int|null $locationId Location ID for filtering (required for location-specific FIFO)
      * @param string $orderBy Order by 'fifo' (oldest first) or 'lifo' (newest first)
      * @return CostLayer[] Array of cost layers
      */
@@ -209,8 +209,11 @@ class FIFOLayerService
             ->setParameter('item', $item)
             ->setParameter('qualityStatus', CostLayer::QUALITY_AVAILABLE);
         
-        // Add location filter if provided
-        // Note: locationId is not yet in CostLayer entity, but we're preparing for it
+        // Add location filter if provided (IMPORTANT: for location-specific FIFO)
+        if ($locationId !== null) {
+            $qb->andWhere('cl.locationId = :locationId')
+               ->setParameter('locationId', $locationId);
+        }
         
         // Order by receipt date for FIFO/LIFO
         if ($orderBy === 'fifo') {

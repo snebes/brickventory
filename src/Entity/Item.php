@@ -17,7 +17,7 @@ class Item
     public int $id;
 
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
+    public string $uuid = '';
 
     #[ORM\Column(type: 'string', length: 55, unique: true)]
     #[Validate\NotBlank]
@@ -54,6 +54,33 @@ class Item
 
     #[ORM\Column(type: 'string', length: 5)]
     public string $colorId = '';
+
+    /**
+     * Get total quantity on hand across all locations
+     * @deprecated Use InventoryBalanceRepository->getTotalOnHand() instead
+     */
+    public function getTotalQuantityOnHand(): int
+    {
+        return $this->quantityOnHand;
+    }
+
+    /**
+     * Get total available quantity across all locations
+     * @deprecated Use InventoryBalanceRepository->getTotalAvailable() instead
+     */
+    public function getTotalQuantityAvailable(): int
+    {
+        return $this->quantityAvailable;
+    }
+
+    /**
+     * Get total quantity on order across all locations
+     * @deprecated Use InventoryBalanceRepository->getTotalOnOrder() instead
+     */
+    public function getTotalQuantityOnOrder(): int
+    {
+        return $this->quantityOnOrder;
+    }
 
     public function __construct()
     {

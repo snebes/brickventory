@@ -21,19 +21,28 @@ class CostLayerRepository extends ServiceEntityRepository
 
     /**
      * Get all cost layers for a specific item with remaining quantity, ordered by receipt date (FIFO)
+     * Optionally filter by location for location-specific FIFO
      *
+     * @param Item $item
+     * @param int|null $locationId Optional location filter for location-specific FIFO
      * @return CostLayer[]
      */
-    public function findAvailableByItem(Item $item): array
+    public function findAvailableByItem(Item $item, ?int $locationId = null): array
     {
-        return $this->createQueryBuilder('cl')
+        $qb = $this->createQueryBuilder('cl')
             ->where('cl.item = :item')
             ->andWhere('cl.quantityRemaining > 0')
             ->setParameter('item', $item)
             ->orderBy('cl.receiptDate', 'ASC')
-            ->addOrderBy('cl.id', 'ASC')  // Secondary sort by ID for consistency
-            ->getQuery()
-            ->getResult();
+            ->addOrderBy('cl.id', 'ASC');  // Secondary sort by ID for consistency
+
+        // Filter by location if provided (for location-specific FIFO)
+        if ($locationId !== null) {
+            $qb->andWhere('cl.locationId = :locationId')
+               ->setParameter('locationId', $locationId);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**

@@ -18,7 +18,7 @@ class PurchaseOrderLine
     public int $id;
 
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
+    public string $uuid = '';
 
     #[ORM\ManyToOne(targetEntity: PurchaseOrder::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
@@ -42,6 +42,15 @@ class PurchaseOrderLine
 
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
     public float $rate = 0.0;
+
+    // Location for receiving (line-level override)
+    #[ORM\ManyToOne(targetEntity: Location::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public ?Location $receivingLocation = null;
+
+    // Bin location for receiving
+    #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    public ?string $receivingBinLocation = null;
 
     // Tax information
     #[ORM\Column(type: 'decimal', precision: 5, scale: 4, nullable: true)]

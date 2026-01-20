@@ -10,6 +10,7 @@ use App\Entity\ItemReceipt;
 use App\Entity\ItemReceiptLine;
 use App\Entity\PurchaseOrder;
 use App\Event\ItemReceivedEvent;
+use App\Service\InventoryBalanceService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -21,7 +22,8 @@ class ItemReceiptService
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly EventDispatcherInterface $eventDispatcher,
-        private readonly PurchaseOrderService $purchaseOrderService
+        private readonly PurchaseOrderService $purchaseOrderService,
+        private readonly InventoryBalanceService $inventoryBalanceService
     ) {
     }
 
@@ -35,10 +37,18 @@ class ItemReceiptService
         int $quantity,
         float $unitCost
     ): CostLayer {
+        // Get location from receipt or use default
+        $location = $receiptLine->itemReceipt->receivedAtLocation;
+        if (!$location) {
+            throw new \InvalidArgumentException('Receipt must have a receiving location');
+        }
+
         // Create cost layer for FIFO tracking
         $costLayer = new CostLayer();
         $costLayer->item = $item;
         $costLayer->itemReceiptLine = $receiptLine;
+        $costLayer->locationId = $location->id;
+        $costLayer->binLocation = $receiptLine->binLocation;
         $costLayer->quantityReceived = $quantity;
         $costLayer->quantityRemaining = $quantity;
         $costLayer->unitCost = $unitCost;
@@ -56,7 +66,17 @@ class ItemReceiptService
         // Link cost layer to receipt line
         $receiptLine->costLayer = $costLayer;
 
-        // Update item quantities
+        // Update inventory balance at location (NEW: location-specific tracking)
+        $this->inventoryBalanceService->updateBalance(
+            $item->id,
+            $location->id,
+            $quantity,
+            'receipt',
+            $receiptLine->binLocation
+        );
+
+        // DEPRECATED: Update item quantities (for backward compatibility)
+        // These will eventually be removed in favor of location-specific balances
         $item->quantityOnHand += $quantity;
         $item->quantityOnOrder -= $quantity;
         $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
@@ -81,14 +101,35 @@ class ItemReceiptService
     public function createItemReceipt(
         PurchaseOrder $po,
         array $lines,
-        float $freightCost = 0.0
+        float $freightCost = 0.0,
+        ?int $receivedAtLocationId = null
     ): ItemReceipt {
         // Validate PO can be received
         $this->purchaseOrderService->validatePOForReceipt($po);
 
+        // Determine receiving location (from parameter, PO, or default)
+        $receivingLocation = null;
+        if ($receivedAtLocationId) {
+            $receivingLocation = $this->entityManager->getRepository(\App\Entity\Location::class)
+                ->find($receivedAtLocationId);
+        } elseif ($po->shipToLocation) {
+            $receivingLocation = $po->shipToLocation;
+        }
+
+        if (!$receivingLocation) {
+            // Get default location
+            $receivingLocation = $this->entityManager->getRepository(\App\Entity\Location::class)
+                ->findOneBy(['locationCode' => 'DEFAULT']);
+        }
+
+        if (!$receivingLocation) {
+            throw new \InvalidArgumentException('No receiving location specified and default location not found');
+        }
+
         $receipt = new ItemReceipt();
         $receipt->purchaseOrder = $po;
         $receipt->vendor = $po->vendor;
+        $receipt->receivedAtLocation = $receivingLocation;
         $receipt->freightCost = $freightCost;
 
         $this->entityManager->persist($receipt);

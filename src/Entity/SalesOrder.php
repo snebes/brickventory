@@ -62,6 +62,13 @@ class SalesOrder
     public ?string $notes = null;
 
     /**
+     * Default location from which to fulfill this order
+     */
+    #[ORM\ManyToOne(targetEntity: Location::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public ?Location $fulfillFromLocation = null;
+
+    /**
      * @var Collection<int, SalesOrderLine>
      */
     #[ORM\OneToMany(targetEntity: SalesOrderLine::class, mappedBy: 'salesOrder', cascade: ['persist', 'remove'])]
