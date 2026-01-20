@@ -91,16 +91,69 @@ export const useApi = () => {
     }),
     
     // Inventory Adjustments
-    getInventoryAdjustments: () => fetchAPI('/api/inventory-adjustments'),
+    getInventoryAdjustments: (params?: { status?: string; type?: string }) => {
+      const queryParams = new URLSearchParams()
+      if (params?.status) queryParams.append('status', params.status)
+      if (params?.type) queryParams.append('type', params.type)
+      
+      const query = queryParams.toString()
+      return fetchAPI(`/api/inventory-adjustments${query ? '?' + query : ''}`)
+    },
     getInventoryAdjustment: (id: number) => fetchAPI(`/api/inventory-adjustments/${id}`),
     createInventoryAdjustment: (adjustment: any) => fetchAPI('/api/inventory-adjustments', {
       method: 'POST',
       body: adjustment
     }),
+    postInventoryAdjustment: (id: number) => fetchAPI(`/api/inventory-adjustments/${id}/post`, {
+      method: 'POST'
+    }),
+    reverseInventoryAdjustment: (id: number, reason: string) => fetchAPI(`/api/inventory-adjustments/${id}/reverse`, {
+      method: 'POST',
+      body: { reason }
+    }),
+    approveInventoryAdjustment: (id: number, approverId: string) => fetchAPI(`/api/inventory-adjustments/${id}/approve`, {
+      method: 'POST',
+      body: { approverId }
+    }),
     deleteInventoryAdjustment: (id: number) => fetchAPI(`/api/inventory-adjustments/${id}`, {
       method: 'DELETE'
     }),
+    getPendingApprovalAdjustments: () => fetchAPI('/api/inventory-adjustments/pending-approval'),
     getInventoryAdjustmentReasons: () => fetchAPI('/api/inventory-adjustments/reasons'),
+    
+    // Physical Counts
+    getPhysicalCounts: (params?: { status?: string; type?: string }) => {
+      const queryParams = new URLSearchParams()
+      if (params?.status) queryParams.append('status', params.status)
+      if (params?.type) queryParams.append('type', params.type)
+      
+      const query = queryParams.toString()
+      return fetchAPI(`/api/physical-counts${query ? '?' + query : ''}`)
+    },
+    getPhysicalCount: (id: number) => fetchAPI(`/api/physical-counts/${id}`),
+    createPhysicalCount: (count: any) => fetchAPI('/api/physical-counts', {
+      method: 'POST',
+      body: count
+    }),
+    completePhysicalCount: (id: number) => fetchAPI(`/api/physical-counts/${id}/complete`, {
+      method: 'POST'
+    }),
+    createAdjustmentFromCount: (id: number, autoPost: boolean = false) => fetchAPI(`/api/physical-counts/${id}/create-adjustment`, {
+      method: 'POST',
+      body: { autoPost }
+    }),
+    recordPhysicalCountLine: (countId: number, lineId: number, countedQuantity: number, countedBy: string) => fetchAPI(`/api/physical-counts/${countId}/lines/${lineId}/count`, {
+      method: 'PUT',
+      body: { countedQuantity, countedBy }
+    }),
+    recordPhysicalCountRecount: (countId: number, lineId: number, recountQuantity: number, verifiedBy: string) => fetchAPI(`/api/physical-counts/${countId}/lines/${lineId}/recount`, {
+      method: 'POST',
+      body: { recountQuantity, verifiedBy }
+    }),
+    getCycleCountsDue: (locationId?: number) => {
+      const query = locationId ? `?locationId=${locationId}` : ''
+      return fetchAPI(`/api/cycle-counts/due${query}`)
+    },
     
     // Reports
     getBackorderedItemsReport: () => fetchAPI('/api/reports/backordered-items/json'),
