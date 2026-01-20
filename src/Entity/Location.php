@@ -39,7 +39,7 @@ class Location
     public int $id;
 
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
+    public string $uuid = '';
 
     #[ORM\Column(type: 'string', length: 50, unique: true)]
     #[Validate\NotBlank]

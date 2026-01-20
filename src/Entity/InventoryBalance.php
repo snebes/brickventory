@@ -25,7 +25,7 @@ class InventoryBalance
     public int $id;
 
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
+    public string $uuid = '';
 
     #[ORM\ManyToOne(targetEntity: Item::class)]
     #[ORM\JoinColumn(nullable: false)]
