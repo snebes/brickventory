@@ -51,10 +51,11 @@ class PurchaseOrder
     #[ORM\Column(type: 'date', nullable: true)]
     public ?\DateTimeInterface $expectedReceiptDate = null;
 
-    // Location
+    // Location - required for receiving inventory (NetSuite pattern)
     #[ORM\ManyToOne(targetEntity: Location::class)]
-    #[ORM\JoinColumn(nullable: true)]
-    public ?Location $shipToLocation = null;
+    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    #[Validate\NotNull(message: 'Receiving location is required. Please select a location before saving the Purchase Order.')]
+    public Location $location;
 
     // Address
     #[ORM\Column(type: 'json', nullable: true)]
@@ -111,6 +112,17 @@ class PurchaseOrder
         $this->uuid = Ulid::generate();
         $this->orderDate = new \DateTime();
         $this->lines = new ArrayCollection();
+    }
+
+    /**
+     * Calculate and update financial totals from lines
+     */
+    /**
+     * Get location ID for API access
+     */
+    public function getLocationId(): ?int
+    {
+        return $this->location?->id ?? null;
     }
 
     /**

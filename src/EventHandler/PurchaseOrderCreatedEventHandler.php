@@ -7,6 +7,7 @@ namespace App\EventHandler;
 use App\Entity\ItemEvent;
 use App\Entity\OrderEvent;
 use App\Event\PurchaseOrderCreatedEvent;
+use App\Service\InventoryBalanceService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
@@ -14,7 +15,8 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 class PurchaseOrderCreatedEventHandler
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly InventoryBalanceService $inventoryBalanceService
     ) {
     }
 
@@ -36,7 +38,13 @@ class PurchaseOrderCreatedEventHandler
         
         $this->entityManager->persist($orderEvent);
 
-        // Update inventory for each line item using event sourcing
+        // Get location from PO
+        $location = $purchaseOrder->location;
+        if (!$location) {
+            throw new \RuntimeException('Purchase Order must have a location');
+        }
+
+        // Update inventory for each line item using InventoryBalanceService
         foreach ($purchaseOrder->lines as $line) {
             $item = $line->item;
             
@@ -50,16 +58,23 @@ class PurchaseOrderCreatedEventHandler
             $itemEvent->metadata = json_encode([
                 'order_number' => $purchaseOrder->orderNumber,
                 'reference' => $purchaseOrder->reference,
+                'location_id' => $location->id,
+                'location_code' => $location->locationCode,
             ]);
             
             $this->entityManager->persist($itemEvent);
             
-            // Update quantityOnOrder when a purchase order is created
+            // Update quantityOnOrder at the location using InventoryBalanceService
+            $this->inventoryBalanceService->updateBalance(
+                $item->id,
+                $location->id,
+                $line->quantityOrdered,
+                'order'
+            );
+            
+            // DEPRECATED: Update item-level quantityOnOrder (for backward compatibility)
+            // This will be removed in favor of location-specific balances in a future version
             $item->quantityOnOrder += $line->quantityOrdered;
-            
-            // Note: quantityAvailable is NOT updated here because items are not yet received
-            // quantityAvailable will be updated when items are actually received
-            
             $this->entityManager->persist($item);
         }
 

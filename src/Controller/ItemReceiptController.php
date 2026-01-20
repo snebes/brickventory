@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\Item;
 use App\Entity\ItemReceipt;
 use App\Entity\ItemReceiptLine;
+use App\Entity\Location;
 use App\Entity\PurchaseOrder;
 use App\Entity\PurchaseOrderLine;
 use App\Event\ItemReceivedEvent;
@@ -40,6 +41,11 @@ class ItemReceiptController extends AbstractController
                     'id' => $receipt->purchaseOrder->id,
                     'orderNumber' => $receipt->purchaseOrder->orderNumber,
                     'reference' => $receipt->purchaseOrder->reference,
+                ],
+                'location' => [
+                    'id' => $receipt->location->id,
+                    'locationCode' => $receipt->location->locationCode,
+                    'locationName' => $receipt->location->locationName,
                 ],
                 'receiptDate' => $receipt->receiptDate->format('Y-m-d H:i:s'),
                 'status' => $receipt->status,
@@ -78,6 +84,11 @@ class ItemReceiptController extends AbstractController
                 'id' => $receipt->purchaseOrder->id,
                 'orderNumber' => $receipt->purchaseOrder->orderNumber,
                 'reference' => $receipt->purchaseOrder->reference,
+            ],
+            'location' => [
+                'id' => $receipt->location->id,
+                'locationCode' => $receipt->location->locationCode,
+                'locationName' => $receipt->location->locationName,
             ],
             'receiptDate' => $receipt->receiptDate->format('Y-m-d H:i:s'),
             'status' => $receipt->status,
@@ -128,9 +139,35 @@ class ItemReceiptController extends AbstractController
                 return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
             }
 
+            // Determine receiving location (from request, PO, or default)
+            $location = null;
+            if (isset($data['locationId'])) {
+                $location = $this->entityManager->getRepository(Location::class)->find($data['locationId']);
+                if (!$location) {
+                    $this->entityManager->rollback();
+                    return $this->json(['error' => 'Invalid location specified'], Response::HTTP_BAD_REQUEST);
+                }
+            } else {
+                // Default to PO's location
+                $location = $purchaseOrder->location;
+            }
+
+            if (!$location) {
+                $this->entityManager->rollback();
+                return $this->json(['error' => 'No receiving location specified and PO has no location'], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Validate location can receive inventory
+            if (!$location->active || !$location->canReceiveInventory()) {
+                $this->entityManager->rollback();
+                return $this->json(['error' => 'The selected location cannot receive inventory'], Response::HTTP_BAD_REQUEST);
+            }
+
             // Create item receipt
             $receipt = new ItemReceipt();
             $receipt->purchaseOrder = $purchaseOrder;
+            $receipt->location = $location;
+            $receipt->vendor = $purchaseOrder->vendor;
             $receipt->receiptDate = isset($data['receiptDate']) ? new \DateTime($data['receiptDate']) : new \DateTime();
             $receipt->notes = $data['notes'] ?? null;
             $receipt->status = $data['status'] ?? 'received';

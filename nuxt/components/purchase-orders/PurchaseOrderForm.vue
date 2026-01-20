@@ -26,6 +26,28 @@
       </div>
 
       <div class="form-group">
+        <label>Receiving Location *</label>
+        <LocationSelector
+          v-model="formOrder.locationId"
+          :required="true"
+          :disabled="isLocationLocked"
+          filterType="receiving"
+          placeholder="Select a receiving location"
+        />
+        <p v-if="isLocationLocked" class="help-text">
+          Location cannot be changed after items have been received.
+        </p>
+      </div>
+
+      <div v-if="selectedLocation" class="location-details">
+        <small>
+          <strong>Location Details:</strong>
+          {{ selectedLocation.locationCode }} - {{ selectedLocation.locationName }}
+          <span v-if="selectedLocation.locationType"> | Type: {{ selectedLocation.locationType }}</span>
+        </small>
+      </div>
+
+      <div class="form-group">
         <label>Order Number (optional)</label>
         <input v-model="formOrder.orderNumber" type="text" placeholder="Auto-generated if left empty" />
       </div>
@@ -115,7 +137,7 @@
       </div>
       
       <div class="actions" style="margin-top: 20px;">
-        <button type="submit" class="btn btn-success" :disabled="!formOrder.vendorId">Save</button>
+        <button type="submit" class="btn btn-success" :disabled="!formOrder.vendorId || !formOrder.locationId">Save</button>
         <button type="button" class="btn btn-secondary" @click="$emit('cancel')">Cancel</button>
       </div>
     </form>
@@ -133,10 +155,12 @@ const emit = defineEmits(['save', 'cancel'])
 const api = useApi()
 
 const vendors = ref<any[]>([])
+const locations = ref<any[]>([])
 
 const formOrder = ref({
   id: null,
   vendorId: null as number | null,
+  locationId: null as number | null,
   orderNumber: '',
   orderDate: parseApiDateForInput(null),
   status: 'Pending Approval',
@@ -153,10 +177,23 @@ const isVendorLocked = computed(() => {
   return lockedStatuses.includes(formOrder.value.status)
 })
 
+// Computed property to check if location field should be locked
+const isLocationLocked = computed(() => {
+  if (!formOrder.value.id) return false
+  const lockedStatuses = ['Partially Received', 'Fully Received']
+  return lockedStatuses.includes(formOrder.value.status)
+})
+
 // Computed property to get selected vendor details
 const selectedVendor = computed(() => {
   if (!formOrder.value.vendorId) return null
   return vendors.value.find(v => v.id === formOrder.value.vendorId)
+})
+
+// Computed property to get selected location details
+const selectedLocation = computed(() => {
+  if (!formOrder.value.locationId) return null
+  return locations.value.find(l => l.id === formOrder.value.locationId)
 })
 
 const loadVendors = async () => {
@@ -169,10 +206,21 @@ const loadVendors = async () => {
   }
 }
 
+const loadLocations = async () => {
+  try {
+    const response = await api.getReceivingLocations()
+    locations.value = response?.locations || response || []
+  } catch (error) {
+    console.error('Failed to load locations:', error)
+    locations.value = []
+  }
+}
+
 const resetForm = () => {
   formOrder.value = {
     id: null,
     vendorId: null,
+    locationId: null,
     orderNumber: '',
     orderDate: parseApiDateForInput(null),
     status: 'Pending Approval',
@@ -188,6 +236,7 @@ watch(() => props.order, (newOrder) => {
     formOrder.value = {
       ...newOrder,
       vendorId: newOrder.vendor?.id || newOrder.vendorId || null,
+      locationId: newOrder.location?.id || newOrder.locationId || null,
       orderDate: parseApiDateForInput(newOrder.orderDate),
       expectedReceiptDate: newOrder.expectedReceiptDate ? parseApiDateForInput(newOrder.expectedReceiptDate) : '',
       status: newOrder.status || 'Pending Approval',
@@ -233,11 +282,16 @@ const save = () => {
     alert('Vendor is required. Please select a vendor before saving the Purchase Order.')
     return
   }
+  if (!formOrder.value.locationId) {
+    alert('Receiving location is required. Please select a location before saving the Purchase Order.')
+    return
+  }
   emit('save', formOrder.value)
 }
 
 onMounted(() => {
   loadVendors()
+  loadLocations()
 })
 </script>
 
@@ -253,6 +307,14 @@ onMounted(() => {
   margin-top: 5px;
   padding: 8px;
   background-color: #f8f9fa;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.location-details {
+  margin-top: 5px;
+  padding: 8px;
+  background-color: #e8f5e9;
   border-radius: 4px;
   font-size: 0.9em;
 }

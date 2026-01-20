@@ -10,6 +10,7 @@
           <tr>
             <th>Receipt Date</th>
             <th>Purchase Order</th>
+            <th>Location</th>
             <th>Reference</th>
             <th>Status</th>
             <th>Items</th>
@@ -20,6 +21,7 @@
           <tr v-for="receipt in receipts" :key="receipt.id">
             <td>{{ formatDate(receipt.receiptDate) }}</td>
             <td>{{ receipt.purchaseOrder.orderNumber }}</td>
+            <td>{{ receipt.location?.locationCode || receipt.location?.locationName || '-' }}</td>
             <td>{{ receipt.purchaseOrder.reference || '-' }}</td>
             <td>{{ receipt.status }}</td>
             <td>{{ receipt.lines?.length || 0 }}</td>
@@ -47,6 +49,9 @@
         <div class="modal-body">
           <div class="detail-row">
             <strong>Purchase Order:</strong> {{ viewingReceipt.purchaseOrder.orderNumber }}
+          </div>
+          <div class="detail-row" v-if="viewingReceipt.location">
+            <strong>Location:</strong> {{ viewingReceipt.location.locationCode }} - {{ viewingReceipt.location.locationName }}
           </div>
           <div class="detail-row" v-if="viewingReceipt.purchaseOrder.reference">
             <strong>Reference:</strong> {{ viewingReceipt.purchaseOrder.reference }}
