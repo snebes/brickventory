@@ -6,7 +6,7 @@
         <button class="btn btn-secondary" @click="showFilters = !showFilters">
           {{ showFilters ? 'Hide' : 'Show' }} Filters
         </button>
-        <button class="btn btn-primary" @click="showForm = true">
+        <button class="btn btn-primary" @click="openNewForm">
           New Adjustment
         </button>
       </div>
@@ -78,6 +78,11 @@
               <div class="actions">
                 <button class="btn btn-secondary btn-small" @click="viewAdjustment(adjustment)">View</button>
                 <button 
+                  v-if="adjustment.status === 'draft'" 
+                  class="btn btn-primary btn-small" 
+                  @click="editAdjustment(adjustment)"
+                >Edit</button>
+                <button 
                   v-if="adjustment.status === 'approved'" 
                   class="btn btn-primary btn-small" 
                   @click="postAdjustment(adjustment.id)"
@@ -107,8 +112,9 @@
 
     <InventoryAdjustmentsInventoryAdjustmentForm 
       v-if="showForm"
+      :adjustment="editingAdjustment"
       @save="handleSave" 
-      @cancel="showForm = false" 
+      @cancel="cancelForm" 
     />
 
     <!-- View Adjustment Modal -->
@@ -233,6 +239,7 @@ const adjustments = ref<Adjustment[]>([])
 const showForm = ref(false)
 const showFilters = ref(false)
 const viewingAdjustment = ref<Adjustment | null>(null)
+const editingAdjustment = ref<Adjustment | null>(null)
 const reversingAdjustmentId = ref<number | null>(null)
 const reverseReason = ref('')
 const loading = ref(false)
@@ -288,6 +295,11 @@ const clearFilters = () => {
   loadAdjustments()
 }
 
+const openNewForm = () => {
+  editingAdjustment.value = null
+  showForm.value = true
+}
+
 const viewAdjustment = async (adjustment: Adjustment) => {
   try {
     const fullAdjustment = await api.getInventoryAdjustment(adjustment.id)
@@ -295,6 +307,21 @@ const viewAdjustment = async (adjustment: Adjustment) => {
   } catch (error) {
     console.error('Failed to load adjustment:', error)
   }
+}
+
+const editAdjustment = async (adjustment: Adjustment) => {
+  try {
+    const fullAdjustment = await api.getInventoryAdjustment(adjustment.id)
+    editingAdjustment.value = fullAdjustment
+    showForm.value = true
+  } catch (error) {
+    console.error('Failed to load adjustment for editing:', error)
+  }
+}
+
+const cancelForm = () => {
+  showForm.value = false
+  editingAdjustment.value = null
 }
 
 const closeModal = () => {
@@ -351,6 +378,7 @@ const deleteAdjustment = async (id: number) => {
 
 const handleSave = async () => {
   showForm.value = false
+  editingAdjustment.value = null
   await loadAdjustments()
 }
 
