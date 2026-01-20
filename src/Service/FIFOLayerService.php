@@ -57,7 +57,7 @@ class FIFOLayerService
      * Consume layers using FIFO (First In, First Out) method
      *
      * @param Item $item The item to consume layers for
-     * @param int $locationId Optional location ID for filtering
+     * @param int|null $locationId Optional location ID for filtering
      * @param int $quantity Quantity to consume
      * @param string $transactionType Type of transaction consuming the layers
      * @param int $transactionId ID of the transaction

@@ -99,7 +99,7 @@ class PhysicalCountLine
 
         $this->varianceQuantity = $this->countedQuantity - $this->systemQuantity;
         
-        if ($this->systemQuantity != 0) {
+        if (abs($this->systemQuantity) > 0.001) {
             $this->variancePercent = ($this->varianceQuantity / $this->systemQuantity) * 100;
         } else {
             $this->variancePercent = $this->countedQuantity > 0 ? 100.0 : 0.0;

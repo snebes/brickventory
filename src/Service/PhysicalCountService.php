@@ -136,7 +136,7 @@ class PhysicalCountService
                 if ($line->hasVariance() && $line->isCounted()) {
                     $adjustmentLines[] = [
                         'itemId' => $line->item->id,
-                        'quantityChange' => (int)$line->varianceQuantity,
+                        'quantityChange' => (int)round($line->varianceQuantity),
                         'notes' => "Physical count {$count->countNumber} variance",
                     ];
                 }

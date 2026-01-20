@@ -36,11 +36,10 @@ class LayerConsumption
     public string $transactionType = '';
 
     #[ORM\Column(type: 'integer')]
-    #[Validate\GreaterThan(0)]
     public int $transactionId = 0;
 
     #[ORM\Column(type: 'integer')]
-    #[Validate\GreaterThan(0)]
+    #[Validate\GreaterThanOrEqual(0)]
     public int $quantityConsumed = 0;
 
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
