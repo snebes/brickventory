@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\PurchaseOrder;
 use App\Entity\Vendor;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -161,8 +162,21 @@ class VendorController extends AbstractController
                 return $this->json(['error' => 'Vendor not found'], Response::HTTP_NOT_FOUND);
             }
 
-            // Check if vendor has associated purchase orders
-            // For now, we'll allow deletion - in production, consider soft delete
+            // Check if vendor has associated purchase orders (cascade prevention)
+            $poCount = $this->entityManager->getRepository(PurchaseOrder::class)
+                ->createQueryBuilder('po')
+                ->select('COUNT(po.id)')
+                ->where('po.vendor = :vendor')
+                ->setParameter('vendor', $vendor)
+                ->getQuery()
+                ->getSingleScalarResult();
+
+            if ($poCount > 0) {
+                return $this->json([
+                    'error' => "Cannot delete vendor: {$vendor->vendorName} has {$poCount} associated Purchase Orders."
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
             $this->entityManager->remove($vendor);
             $this->entityManager->flush();
 

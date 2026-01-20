@@ -41,10 +41,11 @@ class PurchaseOrder
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     public ?string $reference = null;
 
-    // Vendor relationship
+    // Vendor relationship - required per NetSuite ERP model
     #[ORM\ManyToOne(targetEntity: Vendor::class)]
-    #[ORM\JoinColumn(nullable: true)]
-    public ?Vendor $vendor = null;
+    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    #[Validate\NotNull(message: 'Vendor is required. Please select a vendor before saving the Purchase Order.')]
+    public Vendor $vendor;
 
     // Dates
     #[ORM\Column(type: 'date', nullable: true)]

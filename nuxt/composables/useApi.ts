@@ -212,6 +212,29 @@ export const useApi = () => {
     downloadBackorderedItemsCsv: () => {
       const config = useRuntimeConfig()
       window.open(`${config.public.apiBase}/api/reports/backordered-items`, '_blank')
-    }
+    },
+    
+    // Vendors
+    getVendors: (params?: { active?: boolean; search?: string }) => {
+      const queryParams = new URLSearchParams()
+      if (params?.active !== undefined) queryParams.append('active', params.active.toString())
+      if (params?.search) queryParams.append('search', params.search)
+      
+      const query = queryParams.toString()
+      return fetchAPI(`/api/vendors${query ? '?' + query : ''}`)
+    },
+    getVendor: (id: number) => fetchAPI(`/api/vendors/${id}`),
+    createVendor: (vendor: any) => fetchAPI('/api/vendors', {
+      method: 'POST',
+      body: vendor
+    }),
+    updateVendor: (id: number, vendor: any) => fetchAPI(`/api/vendors/${id}`, {
+      method: 'PUT',
+      body: vendor
+    }),
+    deleteVendor: (id: number) => fetchAPI(`/api/vendors/${id}`, {
+      method: 'DELETE'
+    }),
+    getActiveVendors: () => fetchAPI('/api/vendors?active=true')
   }
 }
