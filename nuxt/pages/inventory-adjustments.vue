@@ -47,6 +47,7 @@
           <tr>
             <th>Adjustment #</th>
             <th>Date</th>
+            <th>Location</th>
             <th>Type</th>
             <th>Reason</th>
             <th>Status</th>
@@ -59,6 +60,7 @@
           <tr v-for="adjustment in adjustments" :key="adjustment.id">
             <td><strong>{{ adjustment.adjustmentNumber }}</strong></td>
             <td>{{ formatDate(adjustment.adjustmentDate) }}</td>
+            <td>{{ adjustment.location?.locationName || adjustment.location?.locationCode || '-' }}</td>
             <td>{{ formatType(adjustment.adjustmentType) }}</td>
             <td>{{ formatReason(adjustment.reason) }}</td>
             <td>
@@ -122,6 +124,9 @@
           </div>
           <div class="detail-row">
             <strong>Date:</strong> {{ formatDate(viewingAdjustment.adjustmentDate) }}
+          </div>
+          <div class="detail-row">
+            <strong>Location:</strong> {{ viewingAdjustment.location?.locationName || viewingAdjustment.location?.locationCode || '-' }}
           </div>
           <div class="detail-row">
             <strong>Reason:</strong> {{ formatReason(viewingAdjustment.reason) }}
@@ -201,6 +206,12 @@ interface AdjustmentLine {
   notes?: string
 }
 
+interface Location {
+  id: number
+  locationCode: string
+  locationName: string
+}
+
 interface Adjustment {
   id: number
   uuid: string
@@ -210,6 +221,7 @@ interface Adjustment {
   reason: string
   memo?: string
   status: string
+  location: Location
   totalQuantityChange: number
   totalValueChange: number
   lines: AdjustmentLine[]

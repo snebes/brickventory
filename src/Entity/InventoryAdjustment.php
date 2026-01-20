@@ -94,8 +94,15 @@ class InventoryAdjustment
     #[ORM\Column(type: 'string', length: 10, nullable: true)]
     public ?string $postingPeriod = null;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
-    public ?int $locationId = null;
+    /**
+     * Location for the adjustment - required field following NetSuite ERP pattern.
+     * In NetSuite, inventory adjustments must specify a location on the header
+     * to determine where inventory quantities are adjusted.
+     */
+    #[ORM\ManyToOne(targetEntity: Location::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Validate\NotNull(message: 'Location is required for inventory adjustments')]
+    public Location $location;
 
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
     public float $totalQuantityChange = 0.0;

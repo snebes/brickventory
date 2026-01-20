@@ -8,11 +8,11 @@ This implementation adds comprehensive NetSuite-style inventory adjustment workf
 ### 1. Enhanced Data Models (Phase 1)
 
 #### InventoryAdjustment Entity
-**New Fields Added:**
+**Key Fields:**
 - `adjustmentType` - enum (Quantity Adjustment, Cost Revaluation, Physical Count, Cycle Count, Write-Down, Write-Off, Assembly, Disassembly)
 - `status` - enum (Draft, Pending Approval, Approved, Posted, Void) 
 - `postingPeriod` - string (YYYY-MM format)
-- `locationId` - integer (warehouse/location reference)
+- `location` - **REQUIRED** Location entity relationship (NetSuite ERP pattern - inventory adjustments must specify a location on the header to determine where inventory quantities are adjusted)
 - `totalQuantityChange` - decimal tracking total quantity impact
 - `totalValueChange` - decimal(10,2) tracking total cost impact
 - `approvalRequired` - boolean flag
@@ -20,6 +20,12 @@ This implementation adds comprehensive NetSuite-style inventory adjustment workf
 - `postedBy`, `postedAt` - posting audit fields
 - `referenceNumber` - external reference
 - `countDate` - date for physical counts
+
+**NetSuite ERP Location Pattern:**
+In NetSuite ERP, inventory adjustments require a location on the header record. This location determines:
+1. Where inventory quantities are increased or decreased
+2. Which InventoryBalance record is updated
+3. The location context for FIFO cost layer consumption
 
 **Status Workflow:** Draft → Pending Approval → Approved → Posted (can be Voided at any stage)
 

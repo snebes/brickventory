@@ -12,7 +12,10 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * Event handler that records inventory adjustment events in the event store
- * and immediately updates item quantities
+ * and updates inventory balances at the specified location.
+ * 
+ * Following NetSuite ERP pattern: the location is required on the header record
+ * and is used to determine where inventory quantities are adjusted.
  */
 #[AsEventListener(event: InventoryAdjustedEvent::class)]
 class InventoryAdjustedEventHandler
@@ -30,30 +33,21 @@ class InventoryAdjustedEventHandler
         $inventoryAdjustment = $event->getInventoryAdjustment();
         $adjustmentLine = $event->getAdjustmentLine();
 
-        // Get location from adjustment
-        $locationId = $inventoryAdjustment->locationId;
-        if (!$locationId) {
-            // Get default location if not specified
-            $defaultLocation = $this->entityManager->getRepository(\App\Entity\Location::class)
-                ->findOneBy(['locationCode' => 'DEFAULT']);
-            if ($defaultLocation) {
-                $locationId = $defaultLocation->id;
-            }
-        }
+        // Get location from adjustment header (required in NetSuite ERP pattern)
+        $location = $inventoryAdjustment->location;
+        $locationId = $location->id;
 
-        // Update inventory balance at location (NEW: location-specific tracking)
-        if ($locationId) {
-            $binLocation = $adjustmentLine?->binLocation;
-            $transactionType = $quantityChange > 0 ? 'adjustment_increase' : 'adjustment_decrease';
-            
-            $this->inventoryBalanceService->updateBalance(
-                $item->id,
-                $locationId,
-                $quantityChange,
-                $transactionType,
-                $binLocation
-            );
-        }
+        // Update inventory balance at the header location
+        $binLocation = $adjustmentLine?->binLocation;
+        $transactionType = $quantityChange > 0 ? 'adjustment_increase' : 'adjustment_decrease';
+        
+        $this->inventoryBalanceService->updateBalance(
+            $item->id,
+            $locationId,
+            $quantityChange,
+            $transactionType,
+            $binLocation
+        );
 
         // Create event in event store
         $itemEvent = new ItemEvent();
@@ -67,6 +61,8 @@ class InventoryAdjustedEventHandler
             'reason' => $inventoryAdjustment->reason,
             'memo' => $inventoryAdjustment->memo,
             'location_id' => $locationId,
+            'location_code' => $location->locationCode,
+            'location_name' => $location->locationName,
             'bin_location' => $adjustmentLine?->binLocation,
         ]);
 
