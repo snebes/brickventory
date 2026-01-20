@@ -15,7 +15,7 @@ use Symfony\Component\Validator\Constraints as Validate;
  * 
  * Status Progression: Pending Approval → Pending Fulfillment → Partially Fulfilled → Fulfilled → Billed → Closed/Cancelled
  */
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: \App\Repository\SalesOrderRepository::class)]
 class SalesOrder
 {
     // Status constants following NetSuite workflow
@@ -83,7 +83,6 @@ class SalesOrder
     public function __construct()
     {
         $this->uuid = Ulid::generate();
-        $this->orderNumber = 'SO-' . date('YmdHis') . '-' . substr((string) microtime(true), -4);
         $this->orderDate = new \DateTime();
         $this->lines = new ArrayCollection();
         $this->fulfillments = new ArrayCollection();
