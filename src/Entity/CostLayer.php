@@ -17,8 +17,33 @@ use App\Repository\CostLayerRepository;
  */
 #[ORM\Entity(repositoryClass: CostLayerRepository::class)]
 #[ORM\Index(columns: ['item_id', 'receipt_date'])]
+#[ORM\Index(columns: ['item_id', 'layer_type', 'quality_status'])]
 class CostLayer
 {
+    // Layer Type Constants
+    public const TYPE_RECEIPT = 'receipt';
+    public const TYPE_ADJUSTMENT = 'adjustment';
+    public const TYPE_TRANSFER_IN = 'transfer_in';
+    public const TYPE_MANUFACTURING = 'manufacturing';
+
+    public const VALID_TYPES = [
+        self::TYPE_RECEIPT,
+        self::TYPE_ADJUSTMENT,
+        self::TYPE_TRANSFER_IN,
+        self::TYPE_MANUFACTURING,
+    ];
+
+    // Quality Status Constants
+    public const QUALITY_AVAILABLE = 'available';
+    public const QUALITY_QUARANTINE = 'quarantine';
+    public const QUALITY_REJECTED = 'rejected';
+
+    public const VALID_QUALITY_STATUSES = [
+        self::QUALITY_AVAILABLE,
+        self::QUALITY_QUARANTINE,
+        self::QUALITY_REJECTED,
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
@@ -35,6 +60,14 @@ class CostLayer
     #[ORM\ManyToOne(targetEntity: ItemReceiptLine::class)]
     #[ORM\JoinColumn(nullable: true)]
     public ?ItemReceiptLine $itemReceiptLine = null;
+
+    #[ORM\Column(type: 'string', length: 50)]
+    #[Validate\Choice(choices: self::VALID_TYPES)]
+    public string $layerType = self::TYPE_RECEIPT;
+
+    #[ORM\Column(type: 'string', length: 50)]
+    #[Validate\Choice(choices: self::VALID_QUALITY_STATUSES)]
+    public string $qualityStatus = self::QUALITY_AVAILABLE;
 
     /**
      * Original quantity received in this cost layer
@@ -61,6 +94,18 @@ class CostLayer
     #[ORM\Column(type: 'datetime')]
     #[Validate\NotNull]
     public \DateTimeInterface $receiptDate;
+
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    public ?string $sourceType = null;
+
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    public ?string $sourceReference = null;
+
+    #[ORM\Column(type: 'boolean')]
+    public bool $voided = false;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    public ?string $voidReason = null;
 
     public function __construct()
     {
