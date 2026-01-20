@@ -6,13 +6,15 @@
       :value="modelValue" 
       @change="$emit('update:modelValue', $event.target.value ? parseInt($event.target.value) : null)"
       :required="required"
-      :disabled="disabled"
+      :disabled="disabled || loading"
     >
-      <option value="">{{ placeholder }}</option>
+      <option value="">{{ loading ? 'Loading locations...' : placeholder }}</option>
       <option v-for="location in filteredLocations" :key="location.id" :value="location.id">
         {{ location.locationCode }} - {{ location.locationName }}
       </option>
     </select>
+    <small v-if="loading" class="loading-text">Loading locations...</small>
+    <small v-else-if="locations.length === 0 && !loading" class="error-text">No locations available</small>
   </div>
 </template>
 
@@ -58,15 +60,33 @@ const loadLocations = async () => {
       response = await api.getLocations({ active: true })
     }
     
-    locations.value = response.locations || []
+    // Handle both array and object responses
+    if (Array.isArray(response)) {
+      locations.value = response
+    } else if (response && response.locations) {
+      locations.value = response.locations
+    } else if (response && Array.isArray(response.data)) {
+      locations.value = response.data
+    } else {
+      console.warn('Unexpected API response format:', response)
+      locations.value = []
+    }
+    
+    console.log(`Loaded ${locations.value.length} ${props.filterType} locations`)
   } catch (error) {
     console.error('Error loading locations:', error)
+    locations.value = []
   } finally {
     loading.value = false
   }
 }
 
 onMounted(() => {
+  loadLocations()
+})
+
+// Watch for filterType changes
+watch(() => props.filterType, () => {
   loadLocations()
 })
 </script>
@@ -81,6 +101,7 @@ onMounted(() => {
 label {
   font-weight: 500;
   font-size: 0.95rem;
+  color: #2c3e50;
 }
 
 select {
@@ -90,16 +111,29 @@ select {
   font-size: 1rem;
   background: white;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 select:disabled {
   background: #f5f5f5;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 select:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.loading-text {
+  color: #667eea;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.error-text {
+  color: #e74c3c;
+  font-size: 0.85rem;
 }
 </style>
