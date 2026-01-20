@@ -6,6 +6,7 @@ namespace App\EventHandler;
 
 use App\Entity\ItemEvent;
 use App\Event\InventoryAdjustedEvent;
+use App\Service\InventoryBalanceService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
@@ -17,7 +18,8 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 class InventoryAdjustedEventHandler
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly InventoryBalanceService $inventoryBalanceService
     ) {
     }
 
@@ -26,6 +28,32 @@ class InventoryAdjustedEventHandler
         $item = $event->getItem();
         $quantityChange = $event->getQuantityChange();
         $inventoryAdjustment = $event->getInventoryAdjustment();
+        $adjustmentLine = $event->getAdjustmentLine();
+
+        // Get location from adjustment
+        $locationId = $inventoryAdjustment->locationId;
+        if (!$locationId) {
+            // Get default location if not specified
+            $defaultLocation = $this->entityManager->getRepository(\App\Entity\Location::class)
+                ->findOneBy(['locationCode' => 'DEFAULT']);
+            if ($defaultLocation) {
+                $locationId = $defaultLocation->id;
+            }
+        }
+
+        // Update inventory balance at location (NEW: location-specific tracking)
+        if ($locationId) {
+            $binLocation = $adjustmentLine?->binLocation;
+            $transactionType = $quantityChange > 0 ? 'adjustment_increase' : 'adjustment_decrease';
+            
+            $this->inventoryBalanceService->updateBalance(
+                $item->id,
+                $locationId,
+                $quantityChange,
+                $transactionType,
+                $binLocation
+            );
+        }
 
         // Create event in event store
         $itemEvent = new ItemEvent();
@@ -38,16 +66,15 @@ class InventoryAdjustedEventHandler
             'adjustment_number' => $inventoryAdjustment->adjustmentNumber,
             'reason' => $inventoryAdjustment->reason,
             'memo' => $inventoryAdjustment->memo,
+            'location_id' => $locationId,
+            'bin_location' => $adjustmentLine?->binLocation,
         ]);
 
         $this->entityManager->persist($itemEvent);
 
-        // Update Item quantities based on event
-        // quantityOnHand changes by the adjustment amount (can be positive or negative)
+        // DEPRECATED: Update Item quantities (for backward compatibility)
+        // These will eventually be removed in favor of location-specific balances
         $item->quantityOnHand += $quantityChange;
-        
-        // Recalculate quantityAvailable
-        // quantityAvailable = quantityOnHand - quantityCommitted
         $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
 
         $this->entityManager->persist($item);
