@@ -6,11 +6,9 @@ namespace App\Controller;
 
 use App\Entity\InventoryAdjustment;
 use App\Entity\InventoryAdjustmentLine;
-use App\Entity\Item;
-use App\Event\InventoryAdjustedEvent;
+use App\Service\InventoryAdjustmentService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,15 +18,32 @@ use Symfony\Component\Routing\Attribute\Route;
 class InventoryAdjustmentController extends AbstractController
 {
     public function __construct(
-        private EntityManagerInterface $entityManager,
-        private EventDispatcherInterface $eventDispatcher
+        private readonly EntityManagerInterface $entityManager,
+        private readonly InventoryAdjustmentService $adjustmentService
     ) {
     }
 
     #[Route('', name: 'list', methods: ['GET'])]
-    public function list(): JsonResponse
+    public function list(Request $request): JsonResponse
     {
-        $adjustments = $this->entityManager->getRepository(InventoryAdjustment::class)->findAll();
+        $qb = $this->entityManager->getRepository(InventoryAdjustment::class)->createQueryBuilder('a');
+        
+        // Filter by status
+        if ($request->query->has('status')) {
+            $qb->andWhere('a.status = :status')
+               ->setParameter('status', $request->query->get('status'));
+        }
+        
+        // Filter by adjustment type
+        if ($request->query->has('type')) {
+            $qb->andWhere('a.adjustmentType = :type')
+               ->setParameter('type', $request->query->get('type'));
+        }
+        
+        // Order by date descending
+        $qb->orderBy('a.adjustmentDate', 'DESC');
+        
+        $adjustments = $qb->getQuery()->getResult();
         
         $data = array_map(function (InventoryAdjustment $adjustment) {
             return [
@@ -36,21 +51,19 @@ class InventoryAdjustmentController extends AbstractController
                 'uuid' => $adjustment->uuid,
                 'adjustmentNumber' => $adjustment->adjustmentNumber,
                 'adjustmentDate' => $adjustment->adjustmentDate->format('Y-m-d H:i:s'),
+                'adjustmentType' => $adjustment->adjustmentType,
                 'reason' => $adjustment->reason,
                 'memo' => $adjustment->memo,
                 'status' => $adjustment->status,
-                'lines' => array_map(function (InventoryAdjustmentLine $line) {
-                    return [
-                        'id' => $line->id,
-                        'item' => [
-                            'id' => $line->item->id,
-                            'itemId' => $line->item->itemId,
-                            'itemName' => $line->item->itemName,
-                        ],
-                        'quantityChange' => $line->quantityChange,
-                        'notes' => $line->notes,
-                    ];
-                }, $adjustment->lines->toArray()),
+                'locationId' => $adjustment->locationId,
+                'totalQuantityChange' => $adjustment->totalQuantityChange,
+                'totalValueChange' => $adjustment->totalValueChange,
+                'approvalRequired' => $adjustment->approvalRequired,
+                'approvedBy' => $adjustment->approvedBy,
+                'approvedAt' => $adjustment->approvedAt?->format('Y-m-d H:i:s'),
+                'postedBy' => $adjustment->postedBy,
+                'postedAt' => $adjustment->postedAt?->format('Y-m-d H:i:s'),
+                'lineCount' => $adjustment->lines->count(),
             ];
         }, $adjustments);
 
@@ -71,18 +84,42 @@ class InventoryAdjustmentController extends AbstractController
             'uuid' => $adjustment->uuid,
             'adjustmentNumber' => $adjustment->adjustmentNumber,
             'adjustmentDate' => $adjustment->adjustmentDate->format('Y-m-d H:i:s'),
+            'adjustmentType' => $adjustment->adjustmentType,
             'reason' => $adjustment->reason,
             'memo' => $adjustment->memo,
             'status' => $adjustment->status,
+            'postingPeriod' => $adjustment->postingPeriod,
+            'locationId' => $adjustment->locationId,
+            'totalQuantityChange' => $adjustment->totalQuantityChange,
+            'totalValueChange' => $adjustment->totalValueChange,
+            'approvalRequired' => $adjustment->approvalRequired,
+            'approvedBy' => $adjustment->approvedBy,
+            'approvedAt' => $adjustment->approvedAt?->format('Y-m-d H:i:s'),
+            'postedBy' => $adjustment->postedBy,
+            'postedAt' => $adjustment->postedAt?->format('Y-m-d H:i:s'),
+            'referenceNumber' => $adjustment->referenceNumber,
+            'countDate' => $adjustment->countDate?->format('Y-m-d H:i:s'),
             'lines' => array_map(function (InventoryAdjustmentLine $line) {
                 return [
                     'id' => $line->id,
+                    'uuid' => $line->uuid,
                     'item' => [
                         'id' => $line->item->id,
                         'itemId' => $line->item->itemId,
                         'itemName' => $line->item->itemName,
                     ],
+                    'adjustmentType' => $line->adjustmentType,
                     'quantityChange' => $line->quantityChange,
+                    'quantityBefore' => $line->quantityBefore,
+                    'quantityAfter' => $line->quantityAfter,
+                    'currentUnitCost' => $line->currentUnitCost,
+                    'adjustmentUnitCost' => $line->adjustmentUnitCost,
+                    'newUnitCost' => $line->newUnitCost,
+                    'totalCostImpact' => $line->totalCostImpact,
+                    'binLocation' => $line->binLocation,
+                    'lotNumber' => $line->lotNumber,
+                    'serialNumber' => $line->serialNumber,
+                    'layersAffected' => $line->layersAffected,
                     'notes' => $line->notes,
                 ];
             }, $adjustment->lines->toArray()),
@@ -108,73 +145,113 @@ class InventoryAdjustmentController extends AbstractController
         }
 
         try {
-            $this->entityManager->beginTransaction();
-
-            // Create inventory adjustment
-            $adjustment = new InventoryAdjustment();
-            $adjustment->adjustmentNumber = $data['adjustmentNumber'] ?? 'ADJ-' . date('YmdHis');
-            $adjustment->adjustmentDate = isset($data['adjustmentDate']) ? new \DateTime($data['adjustmentDate']) : new \DateTime();
-            $adjustment->reason = $data['reason'];
-            $adjustment->memo = $data['memo'] ?? null;
-            $adjustment->status = $data['status'] ?? 'approved';
-
-            $this->entityManager->persist($adjustment);
-            $this->entityManager->flush(); // Flush to get the ID for event reference
-
-            // Process adjustment lines
-            foreach ($data['lines'] as $lineData) {
-                if (!isset($lineData['itemId']) || !isset($lineData['quantityChange'])) {
-                    $this->entityManager->rollback();
-                    return $this->json(['error' => 'Each line must have itemId and quantityChange'], Response::HTTP_BAD_REQUEST);
-                }
-
-                // Validate quantity is numeric
-                if (!is_numeric($lineData['quantityChange'])) {
-                    $this->entityManager->rollback();
-                    return $this->json(['error' => 'Quantity change must be numeric'], Response::HTTP_BAD_REQUEST);
-                }
-
-                $item = $this->entityManager->getRepository(Item::class)->find($lineData['itemId']);
-                
-                if (!$item) {
-                    $this->entityManager->rollback();
-                    return $this->json(['error' => 'Item not found: ' . $lineData['itemId']], Response::HTTP_NOT_FOUND);
-                }
-
-                $quantityChange = (int)$lineData['quantityChange'];
-
-                // Skip lines with zero quantity
-                if ($quantityChange === 0) {
-                    continue;
-                }
-
-                // Create adjustment line
-                $adjustmentLine = new InventoryAdjustmentLine();
-                $adjustmentLine->inventoryAdjustment = $adjustment;
-                $adjustmentLine->item = $item;
-                $adjustmentLine->quantityChange = $quantityChange;
-                $adjustmentLine->notes = $lineData['notes'] ?? null;
-                
-                $adjustment->lines->add($adjustmentLine);
-
-                // Dispatch event for inventory update - this immediately updates the item quantity
-                $event = new InventoryAdjustedEvent($item, $quantityChange, $adjustment);
-                $this->eventDispatcher->dispatch($event);
-            }
-
-            $this->entityManager->flush();
-            $this->entityManager->commit();
+            $adjustment = $this->adjustmentService->createQuantityAdjustment(
+                $data['locationId'] ?? null,
+                $data['lines'],
+                $data['reason'],
+                $data['memo'] ?? null,
+                false // Don't auto-post
+            );
 
             return $this->json([
                 'id' => $adjustment->id,
                 'uuid' => $adjustment->uuid,
                 'adjustmentNumber' => $adjustment->adjustmentNumber,
-                'message' => 'Inventory adjustment created and applied successfully'
+                'status' => $adjustment->status,
+                'message' => 'Inventory adjustment created successfully'
             ], Response::HTTP_CREATED);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         } catch (\Exception $e) {
-            $this->entityManager->rollback();
-            throw $e;
+            return $this->json(['error' => 'Failed to create adjustment'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    #[Route('/{id}/post', name: 'post', methods: ['POST'])]
+    public function post(int $id): JsonResponse
+    {
+        try {
+            $this->adjustmentService->postAdjustment($id);
+            
+            return $this->json([
+                'message' => 'Adjustment posted successfully'
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Failed to post adjustment'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/{id}/reverse', name: 'reverse', methods: ['POST'])]
+    public function reverse(int $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        
+        if (empty($data['reason'])) {
+            return $this->json(['error' => 'Reason is required'], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $reversingAdjustment = $this->adjustmentService->reverseAdjustment($id, $data['reason']);
+            
+            return $this->json([
+                'id' => $reversingAdjustment->id,
+                'adjustmentNumber' => $reversingAdjustment->adjustmentNumber,
+                'message' => 'Adjustment reversed successfully'
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Failed to reverse adjustment'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/{id}/approve', name: 'approve', methods: ['POST'])]
+    public function approve(int $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $approverId = $data['approverId'] ?? 'system'; // TODO: Get from security context
+        
+        try {
+            $this->adjustmentService->approveAdjustment($id, $approverId);
+            
+            return $this->json([
+                'message' => 'Adjustment approved successfully'
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Failed to approve adjustment'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/pending-approval', name: 'pending_approval', methods: ['GET'])]
+    public function pendingApproval(): JsonResponse
+    {
+        $adjustments = $this->entityManager->getRepository(InventoryAdjustment::class)
+            ->createQueryBuilder('a')
+            ->where('a.status = :status')
+            ->setParameter('status', InventoryAdjustment::STATUS_PENDING_APPROVAL)
+            ->orderBy('a.adjustmentDate', 'DESC')
+            ->getQuery()
+            ->getResult();
+        
+        $data = array_map(function (InventoryAdjustment $adjustment) {
+            return [
+                'id' => $adjustment->id,
+                'uuid' => $adjustment->uuid,
+                'adjustmentNumber' => $adjustment->adjustmentNumber,
+                'adjustmentDate' => $adjustment->adjustmentDate->format('Y-m-d H:i:s'),
+                'adjustmentType' => $adjustment->adjustmentType,
+                'reason' => $adjustment->reason,
+                'totalQuantityChange' => $adjustment->totalQuantityChange,
+                'totalValueChange' => $adjustment->totalValueChange,
+                'lineCount' => $adjustment->lines->count(),
+            ];
+        }, $adjustments);
+
+        return $this->json($data);
     }
 
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
@@ -186,8 +263,13 @@ class InventoryAdjustmentController extends AbstractController
             return $this->json(['error' => 'Inventory adjustment not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Note: Deleting an adjustment does not reverse the inventory changes
-        // This is by design as per event sourcing pattern - the events are the source of truth
+        if ($adjustment->isPosted()) {
+            return $this->json(
+                ['error' => 'Cannot delete posted adjustment. Use reverse instead.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
         $this->entityManager->remove($adjustment);
         $this->entityManager->flush();
 
@@ -215,3 +297,4 @@ class InventoryAdjustmentController extends AbstractController
         return $this->json($reasons);
     }
 }
+
