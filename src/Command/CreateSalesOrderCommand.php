@@ -8,6 +8,7 @@ use App\Entity\Item;
 use App\Entity\SalesOrder;
 use App\Entity\SalesOrderLine;
 use App\Event\SalesOrderCreatedEvent;
+use App\Repository\SalesOrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -25,7 +26,8 @@ class CreateSalesOrderCommand extends Command
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly EventDispatcherInterface $eventDispatcher
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly SalesOrderRepository $salesOrderRepository
     ) {
         parent::__construct();
     }
@@ -41,10 +43,11 @@ class CreateSalesOrderCommand extends Command
         $notesQuestion = new Question('Enter customer notes (optional): ');
         $notes = $helper->ask($input, $output, $notesQuestion);
 
-        // Create the sales order (order number auto-generated in constructor)
+        // Create the sales order with auto-generated order number
         $salesOrder = new SalesOrder();
+        $salesOrder->orderNumber = $this->salesOrderRepository->getNextOrderNumber();
         $salesOrder->orderDate = new \DateTime();
-        $salesOrder->status = 'pending';
+        $salesOrder->status = SalesOrder::STATUS_PENDING_FULFILLMENT;
         $salesOrder->notes = $notes;
 
         $io->writeln('');

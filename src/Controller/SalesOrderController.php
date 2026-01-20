@@ -10,6 +10,7 @@ use App\Entity\SalesOrderLine;
 use App\Event\SalesOrderCreatedEvent;
 use App\Event\SalesOrderUpdatedEvent;
 use App\Event\SalesOrderDeletedEvent;
+use App\Repository\SalesOrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -23,7 +24,8 @@ class SalesOrderController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly EventDispatcherInterface $eventDispatcher
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly SalesOrderRepository $salesOrderRepository
     ) {
     }
 
@@ -91,9 +93,7 @@ class SalesOrderController extends AbstractController
 
         try {
             $so = new SalesOrder();
-            if (!empty($data['orderNumber'])) {
-                $so->orderNumber = $data['orderNumber'];
-            }
+            $so->orderNumber = $data['orderNumber'] ?? $this->salesOrderRepository->getNextOrderNumber();
             $so->orderDate = new \DateTime($data['orderDate'] ?? 'now');
             // Use new status constants, default to pending_fulfillment
             $so->status = $data['status'] ?? SalesOrder::STATUS_PENDING_FULFILLMENT;

@@ -10,7 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: \App\Repository\PurchaseOrderRepository::class)]
 #[ORM\Table(name: 'purchase_order')]
 #[ORM\Index(columns: ['vendor_id'], name: 'idx_po_vendor')]
 #[ORM\Index(columns: ['status'], name: 'idx_po_status')]

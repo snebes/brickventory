@@ -9,6 +9,7 @@ use App\Entity\PurchaseOrder;
 use App\Entity\PurchaseOrderLine;
 use App\Entity\Vendor;
 use App\Event\PurchaseOrderCreatedEvent;
+use App\Repository\PurchaseOrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -27,7 +28,8 @@ class CreatePurchaseOrderCommand extends Command
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly EventDispatcherInterface $eventDispatcher
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly PurchaseOrderRepository $purchaseOrderRepository
     ) {
         parent::__construct();
     }
@@ -82,8 +84,8 @@ class CreatePurchaseOrderCommand extends Command
             return Command::FAILURE;
         }
 
-        // Generate order number (using timestamp for uniqueness)
-        $orderNumber = 'PO-' . date('YmdHis');
+        // Generate order number using auto-numbering
+        $orderNumber = $this->purchaseOrderRepository->getNextOrderNumber();
 
         // Create the purchase order
         $purchaseOrder = new PurchaseOrder();

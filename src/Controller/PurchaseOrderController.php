@@ -11,6 +11,7 @@ use App\Entity\Vendor;
 use App\Event\PurchaseOrderCreatedEvent;
 use App\Event\PurchaseOrderUpdatedEvent;
 use App\Event\PurchaseOrderDeletedEvent;
+use App\Repository\PurchaseOrderRepository;
 use App\Service\PurchaseOrderService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -26,7 +27,8 @@ class PurchaseOrderController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly EventDispatcherInterface $eventDispatcher,
-        private readonly PurchaseOrderService $purchaseOrderService
+        private readonly PurchaseOrderService $purchaseOrderService,
+        private readonly PurchaseOrderRepository $purchaseOrderRepository
     ) {
     }
 
@@ -124,7 +126,7 @@ class PurchaseOrderController extends AbstractController
 
             $po = new PurchaseOrder();
             $po->vendor = $vendor;
-            $po->orderNumber = $data['orderNumber'] ?? 'PO-' . date('YmdHis');
+            $po->orderNumber = $data['orderNumber'] ?? $this->purchaseOrderRepository->getNextOrderNumber();
             $po->orderDate = new \DateTime($data['orderDate'] ?? 'now');
             $po->status = $data['status'] ?? 'Pending Approval';
             $po->reference = $data['reference'] ?? null;
