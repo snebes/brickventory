@@ -155,6 +155,58 @@ export const useApi = () => {
       return fetchAPI(`/api/cycle-counts/due${query}`)
     },
     
+    // Locations
+    getLocations: (params?: { type?: string; active?: boolean }) => {
+      const queryParams = new URLSearchParams()
+      if (params?.type) queryParams.append('type', params.type)
+      if (params?.active !== undefined) queryParams.append('active', params.active.toString())
+      
+      const query = queryParams.toString()
+      return fetchAPI(`/api/locations${query ? '?' + query : ''}`)
+    },
+    getLocation: (id: number) => fetchAPI(`/api/locations/${id}`),
+    createLocation: (location: any) => fetchAPI('/api/locations', {
+      method: 'POST',
+      body: location
+    }),
+    updateLocation: (id: number, location: any) => fetchAPI(`/api/locations/${id}`, {
+      method: 'PUT',
+      body: location
+    }),
+    activateLocation: (id: number) => fetchAPI(`/api/locations/${id}/activate`, {
+      method: 'POST'
+    }),
+    deactivateLocation: (id: number) => fetchAPI(`/api/locations/${id}/deactivate`, {
+      method: 'POST'
+    }),
+    getLocationInventory: (id: number, itemId?: number) => {
+      const query = itemId ? `?itemId=${itemId}` : ''
+      return fetchAPI(`/api/locations/${id}/inventory${query}`)
+    },
+    getLocationLowStock: (id: number, threshold?: number) => {
+      const query = threshold ? `?threshold=${threshold}` : ''
+      return fetchAPI(`/api/locations/${id}/low-stock${query}`)
+    },
+    getFulfillmentLocations: () => fetchAPI('/api/locations/fulfillment'),
+    getReceivingLocations: () => fetchAPI('/api/locations/receiving'),
+    
+    // Inventory Balances
+    getInventoryBalances: (params?: { itemId?: number; locationId?: number }) => {
+      const queryParams = new URLSearchParams()
+      if (params?.itemId) queryParams.append('itemId', params.itemId.toString())
+      if (params?.locationId) queryParams.append('locationId', params.locationId.toString())
+      
+      const query = queryParams.toString()
+      return fetchAPI(`/api/inventory-balances${query ? '?' + query : ''}`)
+    },
+    getInventoryBalancesByItem: (itemId: number) => fetchAPI(`/api/inventory-balances/by-item/${itemId}`),
+    getInventoryBalancesByLocation: (locationId: number) => fetchAPI(`/api/inventory-balances/by-location/${locationId}`),
+    getInventoryBalanceSummary: () => fetchAPI('/api/inventory-balances/summary'),
+    checkInventoryAvailability: (itemId: number, locationId: number, quantity: number) => fetchAPI('/api/inventory-balances/check-availability', {
+      method: 'POST',
+      body: { itemId, locationId, quantity }
+    }),
+    
     // Reports
     getBackorderedItemsReport: () => fetchAPI('/api/reports/backordered-items/json'),
     downloadBackorderedItemsCsv: () => {
