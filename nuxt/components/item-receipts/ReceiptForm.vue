@@ -11,6 +11,24 @@
         </div>
         <p v-else class="error">Purchase order not loaded</p>
       </div>
+
+      <div class="form-group">
+        <label>Receiving Location *</label>
+        <div v-if="purchaseOrder && purchaseOrder.location" class="location-info">
+          <p class="help-text">
+            This Purchase Order is set to receive at: <strong>{{ purchaseOrder.location.locationCode }} - {{ purchaseOrder.location.locationName }}</strong>
+          </p>
+        </div>
+        <LocationSelector
+          v-model="formReceipt.locationId"
+          :required="true"
+          filterType="receiving"
+          placeholder="Select a receiving location"
+        />
+        <p class="help-text">
+          You can override the default location if needed. Items will be received at the selected location.
+        </p>
+      </div>
       
       <div class="form-group">
         <label>Receipt Date *</label>
@@ -73,13 +91,14 @@ const emit = defineEmits(['save', 'cancel'])
 
 const formReceipt = ref({
   receiptDate: new Date().toISOString().split('T')[0],
+  locationId: null as number | null,
   notes: '',
   status: 'received'
 })
 
 const receiveQuantities = ref<Record<number, number>>({})
 
-// Initialize receive quantities to 0 for all lines
+// Initialize receive quantities to 0 for all lines and set default location
 watch(() => props.purchaseOrder, (po) => {
   if (po && po.lines) {
     const quantities: Record<number, number> = {}
@@ -87,6 +106,11 @@ watch(() => props.purchaseOrder, (po) => {
       quantities[line.id] = 0
     })
     receiveQuantities.value = quantities
+    
+    // Default location to PO's location
+    if (po.location && po.location.id) {
+      formReceipt.value.locationId = po.location.id
+    }
   }
 }, { immediate: true })
 
@@ -118,6 +142,7 @@ const save = () => {
 
   const receiptData = {
     purchaseOrderId: props.purchaseOrder.id,
+    locationId: formReceipt.value.locationId,
     receiptDate: formReceipt.value.receiptDate,
     notes: formReceipt.value.notes,
     status: formReceipt.value.status,
@@ -134,6 +159,19 @@ const save = () => {
   background: #ecf0f1;
   border-radius: 4px;
   margin-top: 5px;
+}
+
+.location-info {
+  padding: 10px;
+  background: #e8f5e9;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.help-text {
+  margin-top: 5px;
+  font-size: 0.85em;
+  color: #666;
 }
 
 .error {

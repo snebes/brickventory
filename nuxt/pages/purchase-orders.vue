@@ -22,6 +22,7 @@
           <tr>
             <th>Order Number</th>
             <th>Vendor</th>
+            <th>Location</th>
             <th>Date</th>
             <th>Reference</th>
             <th>Status</th>
@@ -33,6 +34,7 @@
           <tr v-for="order in orders" :key="order.id">
             <td>{{ order.orderNumber }}</td>
             <td>{{ order.vendor?.vendorName || '-' }}</td>
+            <td>{{ order.location?.locationCode || order.location?.locationName || '-' }}</td>
             <td>{{ formatDate(order.orderDate) }}</td>
             <td>{{ order.reference || '-' }}</td>
             <td>{{ order.status }}</td>
