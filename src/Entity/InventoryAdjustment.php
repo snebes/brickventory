@@ -13,10 +13,52 @@ use Symfony\Component\Validator\Constraints as Validate;
 /**
  * Inventory Adjustment record for manually adjusting inventory quantities.
  * Modeled after NetSuite ERP inventory adjustments.
+ * 
+ * Status Workflow:
+ * Draft -> Pending Approval -> Approved -> Posted
+ * Any status can transition to Void
  */
 #[ORM\Entity]
+#[ORM\Index(columns: ['status', 'adjustment_date'])]
+#[ORM\Index(columns: ['adjustment_type', 'status'])]
 class InventoryAdjustment
 {
+    // Adjustment Type Constants
+    public const TYPE_QUANTITY_ADJUSTMENT = 'quantity_adjustment';
+    public const TYPE_COST_REVALUATION = 'cost_revaluation';
+    public const TYPE_PHYSICAL_COUNT = 'physical_count';
+    public const TYPE_CYCLE_COUNT = 'cycle_count';
+    public const TYPE_WRITE_DOWN = 'write_down';
+    public const TYPE_WRITE_OFF = 'write_off';
+    public const TYPE_ASSEMBLY = 'assembly';
+    public const TYPE_DISASSEMBLY = 'disassembly';
+
+    public const VALID_TYPES = [
+        self::TYPE_QUANTITY_ADJUSTMENT,
+        self::TYPE_COST_REVALUATION,
+        self::TYPE_PHYSICAL_COUNT,
+        self::TYPE_CYCLE_COUNT,
+        self::TYPE_WRITE_DOWN,
+        self::TYPE_WRITE_OFF,
+        self::TYPE_ASSEMBLY,
+        self::TYPE_DISASSEMBLY,
+    ];
+
+    // Status Constants
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_PENDING_APPROVAL = 'pending_approval';
+    public const STATUS_APPROVED = 'approved';
+    public const STATUS_POSTED = 'posted';
+    public const STATUS_VOID = 'void';
+
+    public const VALID_STATUSES = [
+        self::STATUS_DRAFT,
+        self::STATUS_PENDING_APPROVAL,
+        self::STATUS_APPROVED,
+        self::STATUS_POSTED,
+        self::STATUS_VOID,
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
@@ -35,13 +77,52 @@ class InventoryAdjustment
 
     #[ORM\Column(type: 'string', length: 50)]
     #[Validate\NotBlank]
+    #[Validate\Choice(choices: self::VALID_TYPES)]
+    public string $adjustmentType = self::TYPE_QUANTITY_ADJUSTMENT;
+
+    #[ORM\Column(type: 'string', length: 50)]
+    #[Validate\NotBlank]
     public string $reason = '';
 
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $memo = null;
 
     #[ORM\Column(type: 'string', length: 50)]
-    public string $status = 'approved';
+    #[Validate\Choice(choices: self::VALID_STATUSES)]
+    public string $status = self::STATUS_DRAFT;
+
+    #[ORM\Column(type: 'string', length: 10, nullable: true)]
+    public ?string $postingPeriod = null;
+
+    #[ORM\Column(type: 'integer', nullable: true)]
+    public ?int $locationId = null;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    public float $totalQuantityChange = 0.0;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    public float $totalValueChange = 0.0;
+
+    #[ORM\Column(type: 'boolean')]
+    public bool $approvalRequired = false;
+
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    public ?string $approvedBy = null;
+
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    public ?\DateTimeInterface $approvedAt = null;
+
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    public ?string $postedBy = null;
+
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    public ?\DateTimeInterface $postedAt = null;
+
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    public ?string $referenceNumber = null;
+
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    public ?\DateTimeInterface $countDate = null;
 
     /**
      * @var Collection<int, InventoryAdjustmentLine>
@@ -54,5 +135,25 @@ class InventoryAdjustment
         $this->uuid = Ulid::generate();
         $this->adjustmentDate = new \DateTime();
         $this->lines = new ArrayCollection();
+    }
+
+    public function isPosted(): bool
+    {
+        return $this->status === self::STATUS_POSTED;
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === self::STATUS_DRAFT;
+    }
+
+    public function canBePosted(): bool
+    {
+        return $this->status === self::STATUS_APPROVED && !$this->isPosted();
+    }
+
+    public function canBeApproved(): bool
+    {
+        return $this->status === self::STATUS_PENDING_APPROVAL;
     }
 }
