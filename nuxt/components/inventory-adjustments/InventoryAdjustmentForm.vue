@@ -204,9 +204,13 @@ const formData = ref<FormData>({
 // Initialize form data if editing
 onMounted(() => {
   if (props.adjustment) {
+    // Parse date properly from ISO format or datetime string
+    const dateStr = props.adjustment.adjustmentDate
+    const datePart = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr.split('T')[0]
+    
     formData.value = {
       adjustmentNumber: props.adjustment.adjustmentNumber,
-      adjustmentDate: props.adjustment.adjustmentDate.split(' ')[0],
+      adjustmentDate: datePart,
       locationId: props.adjustment.location.id,
       reason: props.adjustment.reason,
       memo: props.adjustment.memo || '',

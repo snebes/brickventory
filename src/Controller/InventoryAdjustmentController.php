@@ -252,23 +252,17 @@ class InventoryAdjustmentController extends AbstractController
             return $this->json(['error' => 'Inventory adjustment not found'], Response::HTTP_NOT_FOUND);
         }
 
-        if (!$adjustment->isDraft()) {
-            return $this->json(
-                ['error' => 'Only draft adjustments can be submitted for approval. Current status: ' . $adjustment->status],
-                Response::HTTP_BAD_REQUEST
-            );
+        try {
+            $adjustment->submitForApproval();
+            $this->entityManager->persist($adjustment);
+            $this->entityManager->flush();
+
+            return $this->json([
+                'message' => 'Adjustment submitted for approval successfully'
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
-
-        // Change status to pending approval
-        $adjustment->status = InventoryAdjustment::STATUS_PENDING_APPROVAL;
-        $adjustment->approvalRequired = true;
-
-        $this->entityManager->persist($adjustment);
-        $this->entityManager->flush();
-
-        return $this->json([
-            'message' => 'Adjustment submitted for approval successfully'
-        ]);
     }
 
     #[Route('/pending-approval', name: 'pending_approval', methods: ['GET'])]
@@ -356,6 +350,7 @@ class InventoryAdjustmentController extends AbstractController
             // Update lines if provided
             if (isset($data['lines']) && is_array($data['lines'])) {
                 // Remove existing lines
+                // TODO: Consider using bulk delete query for better performance with many lines
                 foreach ($adjustment->lines as $line) {
                     $this->entityManager->remove($line);
                 }
