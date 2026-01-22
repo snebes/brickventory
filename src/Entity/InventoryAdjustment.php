@@ -148,11 +148,30 @@ class InventoryAdjustment extends AbstractTransactionalEntity
 
     public function canBePosted(): bool
     {
-        return $this->status === self::STATUS_APPROVED && !$this->isPosted();
+        // Can post if approved, OR if draft and approval is not required
+        return ($this->status === self::STATUS_APPROVED && !$this->isPosted()) ||
+               ($this->status === self::STATUS_DRAFT && !$this->approvalRequired && !$this->isPosted());
     }
 
     public function canBeApproved(): bool
     {
         return $this->status === self::STATUS_PENDING_APPROVAL;
+    }
+
+    public function canBeEdited(): bool
+    {
+        return $this->status === self::STATUS_DRAFT;
+    }
+
+    public function submitForApproval(): void
+    {
+        if (!$this->isDraft()) {
+            throw new \InvalidArgumentException(
+                "Only draft adjustments can be submitted for approval. Current status: {$this->status}"
+            );
+        }
+
+        $this->status = self::STATUS_PENDING_APPROVAL;
+        $this->approvalRequired = true;
     }
 }

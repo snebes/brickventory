@@ -78,6 +78,21 @@
               <div class="actions">
                 <button class="btn btn-secondary btn-small" @click="viewAdjustment(adjustment)">View</button>
                 <button 
+                  v-if="adjustment.status === 'draft'" 
+                  class="btn btn-primary btn-small" 
+                  @click="editAdjustment(adjustment)"
+                >Edit</button>
+                <button 
+                  v-if="adjustment.status === 'draft'" 
+                  class="btn btn-success btn-small" 
+                  @click="submitForApproval(adjustment.id)"
+                >Submit for Approval</button>
+                <button 
+                  v-if="adjustment.status === 'pending_approval'" 
+                  class="btn btn-success btn-small" 
+                  @click="approveAdjustment(adjustment.id)"
+                >Approve</button>
+                <button 
                   v-if="adjustment.status === 'approved'" 
                   class="btn btn-primary btn-small" 
                   @click="postAdjustment(adjustment.id)"
@@ -107,8 +122,9 @@
 
     <InventoryAdjustmentsInventoryAdjustmentForm 
       v-if="showForm"
+      :adjustment="editingAdjustment"
       @save="handleSave" 
-      @cancel="showForm = false" 
+      @cancel="handleCancel" 
     />
 
     <!-- View Adjustment Modal -->
@@ -231,6 +247,7 @@ interface Adjustment {
 const api = useApi()
 const adjustments = ref<Adjustment[]>([])
 const showForm = ref(false)
+const editingAdjustment = ref<Adjustment | null>(null)
 const showFilters = ref(false)
 const viewingAdjustment = ref<Adjustment | null>(null)
 const reversingAdjustmentId = ref<number | null>(null)
@@ -297,6 +314,17 @@ const viewAdjustment = async (adjustment: Adjustment) => {
   }
 }
 
+const editAdjustment = async (adjustment: Adjustment) => {
+  try {
+    const fullAdjustment = await api.getInventoryAdjustment(adjustment.id)
+    editingAdjustment.value = fullAdjustment
+    showForm.value = true
+  } catch (error) {
+    console.error('Failed to load adjustment for editing:', error)
+    alert('Failed to load adjustment for editing')
+  }
+}
+
 const closeModal = () => {
   viewingAdjustment.value = null
   reversingAdjustmentId.value = null
@@ -312,6 +340,30 @@ const postAdjustment = async (id: number) => {
   } catch (error) {
     console.error('Failed to post adjustment:', error)
     alert('Failed to post adjustment')
+  }
+}
+
+const submitForApproval = async (id: number) => {
+  if (!confirm('Are you sure you want to submit this adjustment for approval?')) return
+  
+  try {
+    await api.submitInventoryAdjustmentForApproval(id)
+    await loadAdjustments()
+  } catch (error) {
+    console.error('Failed to submit adjustment for approval:', error)
+    alert('Failed to submit adjustment for approval')
+  }
+}
+
+const approveAdjustment = async (id: number) => {
+  if (!confirm('Are you sure you want to approve this adjustment?')) return
+  
+  try {
+    await api.approveInventoryAdjustment(id, 'current-user') // TODO: Get actual user
+    await loadAdjustments()
+  } catch (error) {
+    console.error('Failed to approve adjustment:', error)
+    alert('Failed to approve adjustment')
   }
 }
 
@@ -351,7 +403,13 @@ const deleteAdjustment = async (id: number) => {
 
 const handleSave = async () => {
   showForm.value = false
+  editingAdjustment.value = null
   await loadAdjustments()
+}
+
+const handleCancel = () => {
+  showForm.value = false
+  editingAdjustment.value = null
 }
 
 const formatDate = (date: string) => {
