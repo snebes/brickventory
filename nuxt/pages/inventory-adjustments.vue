@@ -78,6 +78,11 @@
               <div class="actions">
                 <button class="btn btn-secondary btn-small" @click="viewAdjustment(adjustment)">View</button>
                 <button 
+                  v-if="adjustment.status === 'draft'" 
+                  class="btn btn-primary btn-small" 
+                  @click="editAdjustment(adjustment)"
+                >Edit</button>
+                <button 
                   v-if="adjustment.status === 'approved'" 
                   class="btn btn-primary btn-small" 
                   @click="postAdjustment(adjustment.id)"
@@ -107,8 +112,9 @@
 
     <InventoryAdjustmentsInventoryAdjustmentForm 
       v-if="showForm"
+      :adjustment="editingAdjustment"
       @save="handleSave" 
-      @cancel="showForm = false" 
+      @cancel="handleCancel" 
     />
 
     <!-- View Adjustment Modal -->
@@ -231,6 +237,7 @@ interface Adjustment {
 const api = useApi()
 const adjustments = ref<Adjustment[]>([])
 const showForm = ref(false)
+const editingAdjustment = ref<Adjustment | null>(null)
 const showFilters = ref(false)
 const viewingAdjustment = ref<Adjustment | null>(null)
 const reversingAdjustmentId = ref<number | null>(null)
@@ -297,6 +304,17 @@ const viewAdjustment = async (adjustment: Adjustment) => {
   }
 }
 
+const editAdjustment = async (adjustment: Adjustment) => {
+  try {
+    const fullAdjustment = await api.getInventoryAdjustment(adjustment.id)
+    editingAdjustment.value = fullAdjustment
+    showForm.value = true
+  } catch (error) {
+    console.error('Failed to load adjustment for editing:', error)
+    alert('Failed to load adjustment for editing')
+  }
+}
+
 const closeModal = () => {
   viewingAdjustment.value = null
   reversingAdjustmentId.value = null
@@ -351,7 +369,13 @@ const deleteAdjustment = async (id: number) => {
 
 const handleSave = async () => {
   showForm.value = false
+  editingAdjustment.value = null
   await loadAdjustments()
+}
+
+const handleCancel = () => {
+  showForm.value = false
+  editingAdjustment.value = null
 }
 
 const formatDate = (date: string) => {

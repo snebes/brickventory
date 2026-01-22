@@ -1,6 +1,6 @@
 <template>
   <div class="card">
-    <h3>New Inventory Adjustment</h3>
+    <h3>{{ props.adjustment ? 'Edit' : 'New' }} Inventory Adjustment</h3>
     
     <form @submit.prevent="handleSubmit">
       <div class="form-row">
@@ -148,6 +148,33 @@ interface FormData {
   lines: AdjustmentLine[]
 }
 
+interface Adjustment {
+  id: number
+  adjustmentNumber: string
+  adjustmentDate: string
+  location: {
+    id: number
+    locationCode: string
+    locationName: string
+  }
+  reason: string
+  memo?: string
+  lines: Array<{
+    id: number
+    item: {
+      id: number
+      itemId: string
+      itemName: string
+    }
+    quantityChange: number
+    notes?: string
+  }>
+}
+
+const props = defineProps<{
+  adjustment?: Adjustment
+}>()
+
 const emit = defineEmits(['save', 'cancel'])
 const api = useApi()
 
@@ -172,6 +199,24 @@ const formData = ref<FormData>({
   reason: '',
   memo: '',
   lines: [{ itemId: null, quantityChange: 0, notes: '' }]
+})
+
+// Initialize form data if editing
+onMounted(() => {
+  if (props.adjustment) {
+    formData.value = {
+      adjustmentNumber: props.adjustment.adjustmentNumber,
+      adjustmentDate: props.adjustment.adjustmentDate.split(' ')[0],
+      locationId: props.adjustment.location.id,
+      reason: props.adjustment.reason,
+      memo: props.adjustment.memo || '',
+      lines: props.adjustment.lines.map(line => ({
+        itemId: line.item.id,
+        quantityChange: line.quantityChange,
+        notes: line.notes || ''
+      }))
+    }
+  }
 })
 
 const error = ref('')
@@ -219,7 +264,7 @@ const handleSubmit = async () => {
   saving.value = true
 
   try {
-    await api.createInventoryAdjustment({
+    const adjustmentData = {
       adjustmentNumber: formData.value.adjustmentNumber || undefined,
       adjustmentDate: formData.value.adjustmentDate,
       locationId: formData.value.locationId,
@@ -230,16 +275,24 @@ const handleSubmit = async () => {
         quantityChange: l.quantityChange,
         notes: l.notes || undefined
       }))
-    })
-    
-    success.value = 'Inventory adjustment created and applied successfully!'
+    }
+
+    if (props.adjustment) {
+      // Update existing adjustment
+      await api.updateInventoryAdjustment(props.adjustment.id, adjustmentData)
+      success.value = 'Inventory adjustment updated successfully!'
+    } else {
+      // Create new adjustment
+      await api.createInventoryAdjustment(adjustmentData)
+      success.value = 'Inventory adjustment created successfully!'
+    }
     
     setTimeout(() => {
       emit('save')
     }, 500)
   } catch (err: any) {
-    error.value = err?.message || 'Failed to create adjustment. Please try again.'
-    console.error('Failed to create adjustment:', err)
+    error.value = err?.message || 'Failed to save adjustment. Please try again.'
+    console.error('Failed to save adjustment:', err)
   } finally {
     saving.value = false
   }

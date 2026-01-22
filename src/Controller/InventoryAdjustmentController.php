@@ -276,6 +276,114 @@ class InventoryAdjustmentController extends AbstractController
         return $this->json($data);
     }
 
+    #[Route('/{id}', name: 'update', methods: ['PUT'])]
+    public function update(int $id, Request $request): JsonResponse
+    {
+        $adjustment = $this->entityManager->getRepository(InventoryAdjustment::class)->find($id);
+        
+        if (!$adjustment) {
+            return $this->json(['error' => 'Inventory adjustment not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Only draft adjustments can be edited
+        if (!$adjustment->isDraft()) {
+            return $this->json(
+                ['error' => 'Only draft adjustments can be edited. Current status: ' . $adjustment->status],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $data = json_decode($request->getContent(), true);
+        
+        if (!$data) {
+            return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $this->entityManager->beginTransaction();
+
+            // Update location if provided
+            if (isset($data['locationId'])) {
+                $location = $this->entityManager->getRepository(\App\Entity\Location::class)->find($data['locationId']);
+                if (!$location) {
+                    throw new \InvalidArgumentException("Location with ID {$data['locationId']} not found");
+                }
+                if (!$location->active) {
+                    throw new \InvalidArgumentException("Location is inactive and cannot be used for adjustments");
+                }
+                $adjustment->location = $location;
+            }
+
+            // Update basic fields
+            if (isset($data['adjustmentDate'])) {
+                $adjustment->adjustmentDate = new \DateTime($data['adjustmentDate']);
+            }
+            if (isset($data['reason'])) {
+                $adjustment->reason = $data['reason'];
+            }
+            if (isset($data['memo'])) {
+                $adjustment->memo = $data['memo'];
+            }
+
+            // Update lines if provided
+            if (isset($data['lines']) && is_array($data['lines'])) {
+                // Remove existing lines
+                foreach ($adjustment->lines as $line) {
+                    $this->entityManager->remove($line);
+                }
+                $adjustment->lines->clear();
+
+                // Add new lines
+                $totalQuantityChange = 0.0;
+                foreach ($data['lines'] as $lineData) {
+                    $item = $this->entityManager->getRepository(\App\Entity\Item::class)->find($lineData['itemId']);
+                    
+                    if (!$item) {
+                        throw new \InvalidArgumentException("Item with ID {$lineData['itemId']} not found");
+                    }
+                    
+                    $line = new InventoryAdjustmentLine();
+                    $line->inventoryAdjustment = $adjustment;
+                    $line->item = $item;
+                    $line->adjustmentType = InventoryAdjustmentLine::TYPE_QUANTITY;
+                    $line->quantityChange = $lineData['quantityChange'];
+                    $line->quantityBefore = (float)$item->quantityOnHand;
+                    $line->quantityAfter = $line->quantityBefore + $lineData['quantityChange'];
+                    $line->notes = $lineData['notes'] ?? null;
+                    
+                    if (isset($lineData['unitCost'])) {
+                        $line->currentUnitCost = $lineData['unitCost'];
+                        $line->totalCostImpact = $lineData['quantityChange'] * $lineData['unitCost'];
+                    }
+                    
+                    $adjustment->lines->add($line);
+                    $this->entityManager->persist($line);
+                    $totalQuantityChange += $lineData['quantityChange'];
+                }
+                
+                $adjustment->totalQuantityChange = $totalQuantityChange;
+            }
+
+            $this->entityManager->persist($adjustment);
+            $this->entityManager->flush();
+            $this->entityManager->commit();
+
+            return $this->json([
+                'id' => $adjustment->id,
+                'uuid' => $adjustment->uuid,
+                'adjustmentNumber' => $adjustment->adjustmentNumber,
+                'status' => $adjustment->status,
+                'message' => 'Inventory adjustment updated successfully'
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            $this->entityManager->rollback();
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            $this->entityManager->rollback();
+            return $this->json(['error' => 'Failed to update adjustment: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
