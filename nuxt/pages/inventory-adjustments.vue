@@ -83,6 +83,16 @@
                   @click="editAdjustment(adjustment)"
                 >Edit</button>
                 <button 
+                  v-if="adjustment.status === 'draft'" 
+                  class="btn btn-success btn-small" 
+                  @click="submitForApproval(adjustment.id)"
+                >Submit for Approval</button>
+                <button 
+                  v-if="adjustment.status === 'pending_approval'" 
+                  class="btn btn-success btn-small" 
+                  @click="approveAdjustment(adjustment.id)"
+                >Approve</button>
+                <button 
                   v-if="adjustment.status === 'approved'" 
                   class="btn btn-primary btn-small" 
                   @click="postAdjustment(adjustment.id)"
@@ -330,6 +340,30 @@ const postAdjustment = async (id: number) => {
   } catch (error) {
     console.error('Failed to post adjustment:', error)
     alert('Failed to post adjustment')
+  }
+}
+
+const submitForApproval = async (id: number) => {
+  if (!confirm('Are you sure you want to submit this adjustment for approval?')) return
+  
+  try {
+    await api.submitInventoryAdjustmentForApproval(id)
+    await loadAdjustments()
+  } catch (error) {
+    console.error('Failed to submit adjustment for approval:', error)
+    alert('Failed to submit adjustment for approval')
+  }
+}
+
+const approveAdjustment = async (id: number) => {
+  if (!confirm('Are you sure you want to approve this adjustment?')) return
+  
+  try {
+    await api.approveInventoryAdjustment(id, 'current-user') // TODO: Get actual user
+    await loadAdjustments()
+  } catch (error) {
+    console.error('Failed to approve adjustment:', error)
+    alert('Failed to approve adjustment')
   }
 }
 

@@ -243,6 +243,34 @@ class InventoryAdjustmentController extends AbstractController
         }
     }
 
+    #[Route('/{id}/submit-for-approval', name: 'submit_for_approval', methods: ['POST'])]
+    public function submitForApproval(int $id): JsonResponse
+    {
+        $adjustment = $this->entityManager->getRepository(InventoryAdjustment::class)->find($id);
+        
+        if (!$adjustment) {
+            return $this->json(['error' => 'Inventory adjustment not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$adjustment->isDraft()) {
+            return $this->json(
+                ['error' => 'Only draft adjustments can be submitted for approval. Current status: ' . $adjustment->status],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        // Change status to pending approval
+        $adjustment->status = InventoryAdjustment::STATUS_PENDING_APPROVAL;
+        $adjustment->approvalRequired = true;
+
+        $this->entityManager->persist($adjustment);
+        $this->entityManager->flush();
+
+        return $this->json([
+            'message' => 'Adjustment submitted for approval successfully'
+        ]);
+    }
+
     #[Route('/pending-approval', name: 'pending_approval', methods: ['GET'])]
     public function pendingApproval(): JsonResponse
     {
@@ -286,7 +314,7 @@ class InventoryAdjustmentController extends AbstractController
         }
 
         // Only draft adjustments can be edited
-        if (!$adjustment->isDraft()) {
+        if (!$adjustment->canBeEdited()) {
             return $this->json(
                 ['error' => 'Only draft adjustments can be edited. Current status: ' . $adjustment->status],
                 Response::HTTP_BAD_REQUEST

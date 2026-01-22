@@ -108,6 +108,9 @@ export const useApi = () => {
       method: 'PUT',
       body: adjustment
     }),
+    submitInventoryAdjustmentForApproval: (id: number) => fetchAPI(`/api/inventory-adjustments/${id}/submit-for-approval`, {
+      method: 'POST'
+    }),
     postInventoryAdjustment: (id: number) => fetchAPI(`/api/inventory-adjustments/${id}/post`, {
       method: 'POST'
     }),
