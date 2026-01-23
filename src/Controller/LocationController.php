@@ -19,9 +19,9 @@ class LocationController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly LocationService $locationService,
-        private readonly LocationRepository $locationRepository,
-        private readonly ValidatorInterface $validator
+        private readonly LocationService        $locationService,
+        private readonly LocationRepository     $locationRepository,
+        private readonly ValidatorInterface     $validator
     ) {
     }
 
@@ -44,33 +44,33 @@ class LocationController extends AbstractController
         }
 
         $data = array_map(fn(Location $location) => [
-            'id' => $location->id,
-            'uuid' => $location->uuid,
-            'locationCode' => $location->locationCode,
-            'locationName' => $location->locationName,
-            'locationType' => $location->locationType,
-            'active' => $location->active,
-            'address' => $location->address,
-            'timeZone' => $location->timeZone,
-            'country' => $location->country,
-            'useBinManagement' => $location->useBinManagement,
-            'requiresBinOnReceipt' => $location->requiresBinOnReceipt,
+            'id'                       => $location->id,
+            'uuid'                     => $location->uuid,
+            'locationCode'             => $location->locationCode,
+            'locationName'             => $location->locationName,
+            'locationType'             => $location->locationType,
+            'active'                   => $location->active,
+            'address'                  => $location->address,
+            'timeZone'                 => $location->timeZone,
+            'country'                  => $location->country,
+            'useBinManagement'         => $location->useBinManagement,
+            'requiresBinOnReceipt'     => $location->requiresBinOnReceipt,
             'requiresBinOnFulfillment' => $location->requiresBinOnFulfillment,
-            'defaultBinLocation' => $location->defaultBinLocation,
-            'allowNegativeInventory' => $location->allowNegativeInventory,
-            'isTransferSource' => $location->isTransferSource,
-            'isTransferDestination' => $location->isTransferDestination,
-            'makeInventoryAvailable' => $location->makeInventoryAvailable,
-            'managerId' => $location->managerId,
-            'contactPhone' => $location->contactPhone,
-            'contactEmail' => $location->contactEmail,
-            'createdAt' => $location->createdAt->format('c'),
-            'updatedAt' => $location->updatedAt->format('c'),
+            'defaultBinLocation'       => $location->defaultBinLocation,
+            'allowNegativeInventory'   => $location->allowNegativeInventory,
+            'isTransferSource'         => $location->isTransferSource,
+            'isTransferDestination'    => $location->isTransferDestination,
+            'makeInventoryAvailable'   => $location->makeInventoryAvailable,
+            'managerId'                => $location->managerId,
+            'contactPhone'             => $location->contactPhone,
+            'contactEmail'             => $location->contactEmail,
+            'createdAt'                => $location->createdAt->format('c'),
+            'updatedAt'                => $location->updatedAt->format('c'),
         ], $locations);
 
         return $this->json([
             'locations' => $data,
-            'total' => count($data),
+            'total'     => count($data),
         ]);
     }
 
@@ -84,28 +84,28 @@ class LocationController extends AbstractController
         }
 
         return $this->json([
-            'id' => $location->id,
-            'uuid' => $location->uuid,
-            'locationCode' => $location->locationCode,
-            'locationName' => $location->locationName,
-            'locationType' => $location->locationType,
-            'active' => $location->active,
-            'address' => $location->address,
-            'timeZone' => $location->timeZone,
-            'country' => $location->country,
-            'useBinManagement' => $location->useBinManagement,
-            'requiresBinOnReceipt' => $location->requiresBinOnReceipt,
+            'id'                       => $location->id,
+            'uuid'                     => $location->uuid,
+            'locationCode'             => $location->locationCode,
+            'locationName'             => $location->locationName,
+            'locationType'             => $location->locationType,
+            'active'                   => $location->active,
+            'address'                  => $location->address,
+            'timeZone'                 => $location->timeZone,
+            'country'                  => $location->country,
+            'useBinManagement'         => $location->useBinManagement,
+            'requiresBinOnReceipt'     => $location->requiresBinOnReceipt,
             'requiresBinOnFulfillment' => $location->requiresBinOnFulfillment,
-            'defaultBinLocation' => $location->defaultBinLocation,
-            'allowNegativeInventory' => $location->allowNegativeInventory,
-            'isTransferSource' => $location->isTransferSource,
-            'isTransferDestination' => $location->isTransferDestination,
-            'makeInventoryAvailable' => $location->makeInventoryAvailable,
-            'managerId' => $location->managerId,
-            'contactPhone' => $location->contactPhone,
-            'contactEmail' => $location->contactEmail,
-            'createdAt' => $location->createdAt->format('c'),
-            'updatedAt' => $location->updatedAt->format('c'),
+            'defaultBinLocation'       => $location->defaultBinLocation,
+            'allowNegativeInventory'   => $location->allowNegativeInventory,
+            'isTransferSource'         => $location->isTransferSource,
+            'isTransferDestination'    => $location->isTransferDestination,
+            'makeInventoryAvailable'   => $location->makeInventoryAvailable,
+            'managerId'                => $location->managerId,
+            'contactPhone'             => $location->contactPhone,
+            'contactEmail'             => $location->contactEmail,
+            'createdAt'                => $location->createdAt->format('c'),
+            'updatedAt'                => $location->updatedAt->format('c'),
         ]);
     }
 
@@ -127,11 +127,11 @@ class LocationController extends AbstractController
             }
 
             return $this->json([
-                'id' => $location->id,
-                'uuid' => $location->uuid,
+                'id'           => $location->id,
+                'uuid'         => $location->uuid,
                 'locationCode' => $location->locationCode,
                 'locationName' => $location->locationName,
-                'message' => 'Location created successfully',
+                'message'      => 'Location created successfully',
             ], 201);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage()], 400);
@@ -158,10 +158,10 @@ class LocationController extends AbstractController
             }
 
             return $this->json([
-                'id' => $location->id,
+                'id'           => $location->id,
                 'locationCode' => $location->locationCode,
                 'locationName' => $location->locationName,
-                'message' => 'Location updated successfully',
+                'message'      => 'Location updated successfully',
             ]);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage()], 400);
@@ -177,10 +177,10 @@ class LocationController extends AbstractController
             $location = $this->locationService->activateLocation($id);
 
             return $this->json([
-                'id' => $location->id,
+                'id'           => $location->id,
                 'locationCode' => $location->locationCode,
-                'active' => $location->active,
-                'message' => 'Location activated successfully',
+                'active'       => $location->active,
+                'message'      => 'Location activated successfully',
             ]);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage()], 400);
@@ -196,10 +196,10 @@ class LocationController extends AbstractController
             $location = $this->locationService->deactivateLocation($id);
 
             return $this->json([
-                'id' => $location->id,
+                'id'           => $location->id,
                 'locationCode' => $location->locationCode,
-                'active' => $location->active,
-                'message' => 'Location deactivated successfully',
+                'active'       => $location->active,
+                'message'      => 'Location deactivated successfully',
             ]);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage()], 400);
@@ -221,8 +221,8 @@ class LocationController extends AbstractController
 
             return $this->json([
                 'locationId' => $id,
-                'inventory' => $inventory,
-                'total' => count($inventory),
+                'inventory'  => $inventory,
+                'total'      => count($inventory),
             ]);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage()], 400);
@@ -246,18 +246,18 @@ class LocationController extends AbstractController
             $lowStockItems = $balanceRepo->findLowStockAtLocation($location, $threshold);
 
             $data = array_map(fn($balance) => [
-                'itemId' => $balance->item->id,
-                'itemName' => $balance->item->itemName,
-                'quantityOnHand' => $balance->quantityOnHand,
+                'itemId'            => $balance->item->id,
+                'itemName'          => $balance->item->itemName,
+                'quantityOnHand'    => $balance->quantityOnHand,
                 'quantityAvailable' => $balance->quantityAvailable,
-                'binLocation' => $balance->binLocation,
+                'binLocation'       => $balance->binLocation,
             ], $lowStockItems);
 
             return $this->json([
-                'locationId' => $id,
-                'threshold' => $threshold,
+                'locationId'    => $id,
+                'threshold'     => $threshold,
                 'lowStockItems' => $data,
-                'total' => count($data),
+                'total'         => count($data),
             ]);
         } catch (\Exception $e) {
             return $this->json(['error' => 'Failed to retrieve low stock items'], 500);
@@ -270,7 +270,7 @@ class LocationController extends AbstractController
         $locations = $this->locationRepository->findFulfillmentLocations();
 
         $data = array_map(fn(Location $location) => [
-            'id' => $location->id,
+            'id'           => $location->id,
             'locationCode' => $location->locationCode,
             'locationName' => $location->locationName,
             'locationType' => $location->locationType,
@@ -278,7 +278,7 @@ class LocationController extends AbstractController
 
         return $this->json([
             'locations' => $data,
-            'total' => count($data),
+            'total'     => count($data),
         ]);
     }
 
@@ -288,7 +288,7 @@ class LocationController extends AbstractController
         $locations = $this->locationRepository->findReceivingLocations();
 
         $data = array_map(fn(Location $location) => [
-            'id' => $location->id,
+            'id'           => $location->id,
             'locationCode' => $location->locationCode,
             'locationName' => $location->locationName,
             'locationType' => $location->locationType,
@@ -296,7 +296,7 @@ class LocationController extends AbstractController
 
         return $this->json([
             'locations' => $data,
-            'total' => count($data),
+            'total'     => count($data),
         ]);
     }
 }
