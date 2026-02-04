@@ -41,7 +41,7 @@ class SalesOrderController extends AbstractController
         $qb = $this->entityManager
             ->getRepository(SalesOrder::class)
             ->createQueryBuilder('so')
-            ->orderBy('so.orderDate', 'DESC');
+            ->orderBy('so.transactionDate', 'DESC');
 
         if ($status) {
             $qb->andWhere('so.status = :status')
@@ -49,12 +49,12 @@ class SalesOrderController extends AbstractController
         }
 
         if ($orderDateFrom) {
-            $qb->andWhere('so.orderDate >= :dateFrom')
+            $qb->andWhere('so.transactionDate >= :dateFrom')
                ->setParameter('dateFrom', new \DateTime($orderDateFrom));
         }
 
         if ($orderDateTo) {
-            $qb->andWhere('so.orderDate <= :dateTo')
+            $qb->andWhere('so.transactionDate <= :dateTo')
                ->setParameter('dateTo', new \DateTime($orderDateTo));
         }
 
@@ -74,7 +74,7 @@ class SalesOrderController extends AbstractController
     public function get(int $id): JsonResponse
     {
         $so = $this->entityManager->getRepository(SalesOrder::class)->find($id);
-        
+
         if (!$so) {
             return $this->json(['error' => 'Sales order not found'], Response::HTTP_NOT_FOUND);
         }
@@ -86,7 +86,7 @@ class SalesOrderController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data) {
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
@@ -94,7 +94,7 @@ class SalesOrderController extends AbstractController
         try {
             $so = new SalesOrder();
             $so->orderNumber = $data['orderNumber'] ?? $this->salesOrderRepository->getNextOrderNumber();
-            $so->orderDate = new \DateTime($data['orderDate'] ?? 'now');
+            $so->setOrderDate(new \DateTime($data['orderDate'] ?? 'now'));
             // Use new status constants, default to pending_fulfillment
             $so->status = $data['status'] ?? SalesOrder::STATUS_PENDING_FULFILLMENT;
             $so->notes = $data['notes'] ?? null;
@@ -102,16 +102,16 @@ class SalesOrderController extends AbstractController
             $lines = $data['lines'] ?? [];
             foreach ($lines as $lineData) {
                 $item = $this->entityManager->getRepository(Item::class)->find($lineData['itemId']);
-                
+
                 if (!$item) {
                     throw new \InvalidArgumentException("Item {$lineData['itemId']} not found");
                 }
-                
+
                 $line = new SalesOrderLine();
                 $line->salesOrder = $so;
                 $line->item = $item;
                 $line->quantityOrdered = $lineData['quantityOrdered'];
-                
+
                 $so->lines->add($line);
             }
 
@@ -135,14 +135,14 @@ class SalesOrderController extends AbstractController
     public function update(int $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data) {
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
         try {
             $so = $this->entityManager->getRepository(SalesOrder::class)->find($id);
-            
+
             if (!$so) {
                 throw new \InvalidArgumentException("Sales order {$id} not found");
             }
@@ -151,7 +151,7 @@ class SalesOrderController extends AbstractController
             $previousState = $this->serializeSalesOrder($so);
 
             // Update basic fields
-            $so->orderDate = new \DateTime($data['orderDate']);
+            $so->setOrderDate(new \DateTime($data['orderDate']));
             $so->status = $data['status'];
             $so->notes = $data['notes'] ?? null;
 
@@ -165,16 +165,16 @@ class SalesOrderController extends AbstractController
             $lines = $data['lines'] ?? [];
             foreach ($lines as $lineData) {
                 $item = $this->entityManager->getRepository(Item::class)->find($lineData['itemId']);
-                
+
                 if (!$item) {
                     throw new \InvalidArgumentException("Item {$lineData['itemId']} not found");
                 }
-                
+
                 $line = new SalesOrderLine();
                 $line->salesOrder = $so;
                 $line->item = $item;
                 $line->quantityOrdered = $lineData['quantityOrdered'];
-                
+
                 $so->lines->add($line);
             }
 
@@ -197,7 +197,7 @@ class SalesOrderController extends AbstractController
     {
         try {
             $so = $this->entityManager->getRepository(SalesOrder::class)->find($id);
-            
+
             if (!$so) {
                 throw new \InvalidArgumentException("Sales order {$id} not found");
             }
@@ -223,7 +223,7 @@ class SalesOrderController extends AbstractController
         return [
             'id' => $so->id,
             'orderNumber' => $so->orderNumber,
-            'orderDate' => $so->orderDate->format('Y-m-d H:i:s'),
+            'orderDate' => $so->getOrderDate()->format('Y-m-d H:i:s'),
             'status' => $so->status,
             'notes' => $so->notes,
             'canBeFulfilled' => $so->canBeFulfilled(),

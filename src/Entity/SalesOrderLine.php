@@ -5,23 +5,14 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
  * Sales Order Line entity with quantity tracking for NetSuite workflow.
  */
 #[ORM\Entity]
-class SalesOrderLine
+class SalesOrderLine extends AbstractTransactionLineEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: SalesOrder::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -71,10 +62,6 @@ class SalesOrderLine
     #[ORM\Column(type: 'string', length: 50, nullable: true)]
     public ?string $pickFromBinLocation = null;
 
-    public function __construct()
-    {
-        $this->uuid = Ulid::generate();
-    }
 
     /**
      * Get the quantity remaining to be fulfilled.

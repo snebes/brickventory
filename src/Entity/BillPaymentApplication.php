@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -15,16 +14,8 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Table(name: 'bill_payment_application')]
 #[ORM\Index(columns: ['bill_payment_id'], name: 'idx_app_payment')]
 #[ORM\Index(columns: ['vendor_bill_id'], name: 'idx_app_bill')]
-class BillPaymentApplication
+class BillPaymentApplication extends AbstractTransactionLineEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: BillPayment::class, inversedBy: 'applications')]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -47,7 +38,7 @@ class BillPaymentApplication
 
     public function __construct()
     {
-        $this->uuid = Ulid::generate();
+        parent::__construct();
         $this->appliedAt = new \DateTime();
     }
 }

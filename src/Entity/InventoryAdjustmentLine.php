@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -14,7 +13,7 @@ use Symfony\Component\Validator\Constraints as Validate;
  */
 #[ORM\Entity]
 #[ORM\Index(columns: ['item_id', 'inventory_adjustment_id'])]
-class InventoryAdjustmentLine
+class InventoryAdjustmentLine extends AbstractTransactionLineEntity
 {
     // Adjustment Line Type Constants
     public const TYPE_QUANTITY = 'quantity';
@@ -26,14 +25,6 @@ class InventoryAdjustmentLine
         self::TYPE_VALUE,
         self::TYPE_BOTH,
     ];
-
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
 
     #[ORM\ManyToOne(targetEntity: InventoryAdjustment::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
@@ -87,9 +78,4 @@ class InventoryAdjustmentLine
 
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $notes = null;
-
-    public function __construct()
-    {
-        $this->uuid = Ulid::generate();
-    }
 }

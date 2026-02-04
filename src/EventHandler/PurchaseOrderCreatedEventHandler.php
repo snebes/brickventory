@@ -35,7 +35,7 @@ class PurchaseOrderCreatedEventHandler
             'order_number' => $purchaseOrder->orderNumber,
             'reference' => $purchaseOrder->reference,
         ]);
-        
+
         $this->entityManager->persist($orderEvent);
 
         // Get location from PO
@@ -47,7 +47,7 @@ class PurchaseOrderCreatedEventHandler
         // Update inventory for each line item using InventoryBalanceService
         foreach ($purchaseOrder->lines as $line) {
             $item = $line->item;
-            
+
             // Create event in event store for item inventory
             $itemEvent = new ItemEvent();
             $itemEvent->item = $item;
@@ -61,9 +61,9 @@ class PurchaseOrderCreatedEventHandler
                 'location_id' => $location->id,
                 'location_code' => $location->locationCode,
             ]);
-            
+
             $this->entityManager->persist($itemEvent);
-            
+
             // Update quantityOnOrder at the location using InventoryBalanceService
             $this->inventoryBalanceService->updateBalance(
                 $item->id,
@@ -71,7 +71,7 @@ class PurchaseOrderCreatedEventHandler
                 $line->quantityOrdered,
                 'order'
             );
-            
+
             // DEPRECATED: Update item-level quantityOnOrder (for backward compatibility)
             // This will be removed in favor of location-specific balances in a future version
             $item->quantityOnOrder += $line->quantityOrdered;
@@ -86,7 +86,7 @@ class PurchaseOrderCreatedEventHandler
         return [
             'id' => $po->id,
             'orderNumber' => $po->orderNumber,
-            'orderDate' => $po->orderDate->format('Y-m-d H:i:s'),
+            'orderDate' => $po->getOrderDate()->format('Y-m-d H:i:s'),
             'status' => $po->status,
             'reference' => $po->reference,
             'notes' => $po->notes,

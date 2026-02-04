@@ -5,21 +5,12 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'purchase_order_line')]
-class PurchaseOrderLine
+class PurchaseOrderLine extends AbstractTransactionLineEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: PurchaseOrder::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -74,10 +65,6 @@ class PurchaseOrderLine
     #[ORM\Column(type: 'string', length: 50, nullable: true)]
     public ?string $closedReason = null;
 
-    public function __construct()
-    {
-        $this->uuid = Ulid::generate();
-    }
 
     /**
      * Check if line is fully received

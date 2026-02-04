@@ -48,7 +48,7 @@ class PurchaseOrderController extends AbstractController
             ->createQueryBuilder('po')
             ->leftJoin('po.vendor', 'v')
             ->leftJoin('po.location', 'l')
-            ->orderBy('po.orderDate', 'DESC');
+            ->orderBy('po.transactionDate', 'DESC');
 
         if ($status) {
             $qb->andWhere('po.status = :status')
@@ -61,12 +61,12 @@ class PurchaseOrderController extends AbstractController
         }
 
         if ($orderDateFrom) {
-            $qb->andWhere('po.orderDate >= :dateFrom')
+            $qb->andWhere('po.transactionDate >= :dateFrom')
                ->setParameter('dateFrom', new \DateTime($orderDateFrom));
         }
 
         if ($orderDateTo) {
-            $qb->andWhere('po.orderDate <= :dateTo')
+            $qb->andWhere('po.transactionDate <= :dateTo')
                ->setParameter('dateTo', new \DateTime($orderDateTo));
         }
 
@@ -86,7 +86,7 @@ class PurchaseOrderController extends AbstractController
     public function get(int $id): JsonResponse
     {
         $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
-        
+
         if (!$po) {
             return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
         }
@@ -98,7 +98,7 @@ class PurchaseOrderController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data) {
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
@@ -158,8 +158,8 @@ class PurchaseOrderController extends AbstractController
             $po->vendor = $vendor;
             $po->location = $location;
             $po->orderNumber = $data['orderNumber'] ?? $this->purchaseOrderRepository->getNextOrderNumber();
-            $po->orderDate = new \DateTime($data['orderDate'] ?? 'now');
-            $po->status = $data['status'] ?? 'Pending Approval';
+            $po->setOrderDate(new \DateTime($data['orderDate'] ?? 'now'));
+            $po->status = $data['status'] ?? PurchaseOrder::STATUS_PENDING_APPROVAL;
             $po->reference = $data['reference'] ?? null;
             $po->notes = $data['notes'] ?? null;
 
@@ -176,17 +176,17 @@ class PurchaseOrderController extends AbstractController
             $lines = $data['lines'] ?? [];
             foreach ($lines as $lineData) {
                 $item = $this->entityManager->getRepository(Item::class)->find($lineData['itemId']);
-                
+
                 if (!$item) {
                     throw new \InvalidArgumentException("Item {$lineData['itemId']} not found");
                 }
-                
+
                 $line = new PurchaseOrderLine();
                 $line->purchaseOrder = $po;
                 $line->item = $item;
                 $line->quantityOrdered = $lineData['quantityOrdered'];
                 $line->rate = $lineData['rate'];
-                
+
                 $po->lines->add($line);
             }
 
@@ -212,14 +212,14 @@ class PurchaseOrderController extends AbstractController
     public function update(int $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data) {
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
 
         try {
             $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
-            
+
             if (!$po) {
                 throw new \InvalidArgumentException("Purchase order {$id} not found");
             }
@@ -292,7 +292,7 @@ class PurchaseOrderController extends AbstractController
             $previousState = $this->serializePurchaseOrder($po);
 
             // Update basic fields
-            $po->orderDate = new \DateTime($data['orderDate']);
+            $po->setOrderDate(new \DateTime($data['orderDate']));
             $po->status = $data['status'];
             $po->reference = $data['reference'] ?? null;
             $po->notes = $data['notes'] ?? null;
@@ -318,17 +318,17 @@ class PurchaseOrderController extends AbstractController
             $lines = $data['lines'] ?? [];
             foreach ($lines as $lineData) {
                 $item = $this->entityManager->getRepository(Item::class)->find($lineData['itemId']);
-                
+
                 if (!$item) {
                     throw new \InvalidArgumentException("Item {$lineData['itemId']} not found");
                 }
-                
+
                 $line = new PurchaseOrderLine();
                 $line->purchaseOrder = $po;
                 $line->item = $item;
                 $line->quantityOrdered = $lineData['quantityOrdered'];
                 $line->rate = $lineData['rate'];
-                
+
                 $po->lines->add($line);
             }
 
@@ -354,7 +354,7 @@ class PurchaseOrderController extends AbstractController
     {
         try {
             $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
-            
+
             if (!$po) {
                 throw new \InvalidArgumentException("Purchase order {$id} not found");
             }
@@ -380,7 +380,7 @@ class PurchaseOrderController extends AbstractController
         return [
             'id' => $po->id,
             'orderNumber' => $po->orderNumber,
-            'orderDate' => $po->orderDate->format('Y-m-d H:i:s'),
+            'orderDate' => $po->getOrderDate()->format('Y-m-d H:i:s'),
             'status' => $po->status,
             'reference' => $po->reference,
             'notes' => $po->notes,
@@ -428,20 +428,20 @@ class PurchaseOrderController extends AbstractController
     public function approve(int $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
+
         try {
             $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
-            
+
             if (!$po) {
                 return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
             }
 
             $approverId = $data['approverId'] ?? null;
-            
+
             if (!$approverId) {
                 return $this->json(['error' => 'approverId is required'], Response::HTTP_BAD_REQUEST);
             }
-            
+
             $this->purchaseOrderService->approvePurchaseOrder($po, $approverId);
 
             return $this->json([
@@ -458,16 +458,16 @@ class PurchaseOrderController extends AbstractController
     public function close(int $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
+
         try {
             $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
-            
+
             if (!$po) {
                 return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
             }
 
             $reason = $data['reason'] ?? 'Closed';
-            
+
             $this->purchaseOrderService->closePurchaseOrder($po, $reason);
 
             return $this->json([
@@ -485,7 +485,7 @@ class PurchaseOrderController extends AbstractController
     {
         try {
             $po = $this->entityManager->getRepository(PurchaseOrder::class)->find($id);
-            
+
             if (!$po) {
                 return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
             }

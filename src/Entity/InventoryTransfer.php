@@ -7,16 +7,17 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
  * InventoryTransfer entity for moving inventory between locations
+ *
+ * Status Progression: Pending → In Transit → Partially Received → Received / Cancelled
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'inventory_transfer')]
 #[ORM\Index(columns: ['from_location_id', 'to_location_id', 'status'], name: 'idx_transfer_locations_status')]
-#[ORM\Index(columns: ['status', 'transfer_date'], name: 'idx_transfer_status_date')]
+#[ORM\Index(columns: ['status', 'transaction_date'], name: 'idx_transfer_status_date')]
 class InventoryTransfer extends AbstractTransactionalEntity
 {
     // Status Constants
@@ -59,10 +60,6 @@ class InventoryTransfer extends AbstractTransactionalEntity
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
     public Location $toLocation;
-
-    #[ORM\Column(type: 'date')]
-    #[Validate\NotNull]
-    public \DateTimeInterface $transferDate;
 
     #[ORM\Column(type: 'date', nullable: true)]
     public ?\DateTimeInterface $expectedDeliveryDate = null;
@@ -119,8 +116,40 @@ class InventoryTransfer extends AbstractTransactionalEntity
     {
         parent::__construct();
         $this->transferNumber = 'XFER-' . date('Ymd') . '-' . substr((string) microtime(true), -6);
-        $this->transferDate = new \DateTime();
         $this->lines = new ArrayCollection();
+    }
+
+    /**
+     * Get the transaction number (transfer number).
+     */
+    public function getTransactionNumber(): string
+    {
+        return $this->transferNumber;
+    }
+
+    /**
+     * Get the transaction type identifier.
+     */
+    public function getTransactionType(): string
+    {
+        return 'inventory_transfer';
+    }
+
+    /**
+     * Get the transfer date (alias for transactionDate).
+     */
+    public function getTransferDate(): \DateTimeInterface
+    {
+        return $this->transactionDate;
+    }
+
+    /**
+     * Set the transfer date (alias for transactionDate).
+     */
+    public function setTransferDate(\DateTimeInterface $date): self
+    {
+        $this->transactionDate = $date;
+        return $this;
     }
 
     /**

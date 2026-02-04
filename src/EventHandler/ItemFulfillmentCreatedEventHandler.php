@@ -15,7 +15,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * Event handler for ItemFulfillmentCreatedEvent.
- * 
+ *
  * Handles inventory reduction when items are fulfilled:
  * - Decreases quantityOnHand
  * - Decreases quantityCommitted
@@ -87,10 +87,10 @@ class ItemFulfillmentCreatedEventHandler
             // Update Item quantities
             // quantityOnHand decreases when items are fulfilled
             $item->quantityOnHand -= $quantityFulfilled;
-            
+
             // quantityCommitted decreases when items are fulfilled (order is being shipped)
             $item->quantityCommitted = max(0, $item->quantityCommitted - $quantityFulfilled);
-            
+
             // Recalculate quantityAvailable
             // quantityAvailable = quantityOnHand - quantityCommitted
             $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
@@ -99,7 +99,7 @@ class ItemFulfillmentCreatedEventHandler
 
             // Update sales order line fulfilled quantity
             $salesOrderLine->quantityFulfilled += $quantityFulfilled;
-            
+
             // Update committed quantity on line (reduce it)
             $salesOrderLine->quantityCommitted = max(0, $salesOrderLine->quantityCommitted - $quantityFulfilled);
 
@@ -115,7 +115,7 @@ class ItemFulfillmentCreatedEventHandler
 
     /**
      * Consume cost layers in FIFO order and return total cost of goods sold
-     * 
+     *
      * @param Item $item
      * @param int $quantity
      * @return array{totalCost: float, layersConsumed: array<array{layerId: int, quantity: int, cost: float}>}
@@ -161,7 +161,7 @@ class ItemFulfillmentCreatedEventHandler
             'fulfillmentNumber' => $fulfillment->fulfillmentNumber,
             'salesOrderId' => $fulfillment->salesOrder->id,
             'salesOrderNumber' => $fulfillment->salesOrder->orderNumber,
-            'fulfillmentDate' => $fulfillment->fulfillmentDate?->format('Y-m-d H:i:s'),
+            'fulfillmentDate' => $fulfillment->getFulfillmentDate()->format('Y-m-d H:i:s'),
             'status' => $fulfillment->status,
             'shipMethod' => $fulfillment->shipMethod,
             'trackingNumber' => $fulfillment->trackingNumber,

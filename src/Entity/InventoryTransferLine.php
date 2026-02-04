@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -13,16 +12,8 @@ use Symfony\Component\Validator\Constraints as Validate;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'inventory_transfer_line')]
-class InventoryTransferLine
+class InventoryTransferLine extends AbstractTransactionLineEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: InventoryTransfer::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -63,19 +54,6 @@ class InventoryTransferLine
 
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $notes = null;
-
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $createdAt;
-
-    #[ORM\Column(type: 'datetime')]
-    public \DateTimeInterface $updatedAt;
-
-    public function __construct()
-    {
-        $this->uuid = Ulid::generate();
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
-    }
 
     /**
      * Check if line is fully shipped
@@ -134,14 +112,6 @@ class InventoryTransferLine
         }
 
         $this->quantityReceived += $quantity;
-        $this->updatedAt = new \DateTime();
-    }
-
-    /**
-     * Update the updatedAt timestamp
-     */
-    public function touch(): void
-    {
         $this->updatedAt = new \DateTime();
     }
 }

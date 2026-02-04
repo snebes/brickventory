@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -14,16 +13,8 @@ use Symfony\Component\Validator\Constraints as Validate;
  */
 #[ORM\Entity]
 #[ORM\Index(columns: ['physical_count_id', 'item_id'])]
-class PhysicalCountLine
+class PhysicalCountLine extends AbstractTransactionLineEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: PhysicalCount::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -86,10 +77,6 @@ class PhysicalCountLine
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $notes = null;
 
-    public function __construct()
-    {
-        $this->uuid = Ulid::generate();
-    }
 
     public function calculateVariance(): void
     {
@@ -98,7 +85,7 @@ class PhysicalCountLine
         }
 
         $this->varianceQuantity = $this->countedQuantity - $this->systemQuantity;
-        
+
         if (abs($this->systemQuantity) > 0.001) {
             $this->variancePercent = ($this->varianceQuantity / $this->systemQuantity) * 100;
         } else {

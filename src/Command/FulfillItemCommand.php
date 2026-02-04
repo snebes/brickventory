@@ -78,14 +78,14 @@ class FulfillItemCommand extends Command
 
         foreach ($salesOrder->lines as $index => $line) {
             $remaining = $line->quantityOrdered - $line->quantityFulfilled;
-            
+
             if ($remaining <= 0) {
                 $io->writeln(sprintf('Line %d: Already fully fulfilled', $index + 1));
                 continue;
             }
 
             $maxFulfillable = min($remaining, $line->item->quantityOnHand);
-            
+
             if ($maxFulfillable <= 0) {
                 $io->warning(sprintf(
                     'Line %d (%s): No inventory available (on hand: %d)',
@@ -104,7 +104,7 @@ class FulfillItemCommand extends Command
                     $maxFulfillable
                 )
             );
-            
+
             $quantityInput = $helper->ask($input, $output, $quantityQuestion);
 
             if (empty($quantityInput)) {
@@ -138,9 +138,9 @@ class FulfillItemCommand extends Command
         // Create ItemFulfillment record
         $itemFulfillment = new ItemFulfillment();
         $itemFulfillment->salesOrder = $salesOrder;
-        $itemFulfillment->fulfillmentDate = $fulfillmentDate;
-        $itemFulfillment->status = 'fulfilled';
-        
+        $itemFulfillment->setFulfillmentDate($fulfillmentDate);
+        $itemFulfillment->status = ItemFulfillment::STATUS_SHIPPED;
+
         $this->entityManager->persist($itemFulfillment);
 
         // Update sales order status if fully fulfilled
@@ -153,14 +153,14 @@ class FulfillItemCommand extends Command
         }
 
         if ($allFulfilled) {
-            $salesOrder->status = 'fulfilled';
+            $salesOrder->status = SalesOrder::STATUS_FULFILLED;
             $this->entityManager->persist($salesOrder);
         }
 
         $this->entityManager->flush();
 
         $io->success('Items fulfilled successfully!');
-        
+
         return Command::SUCCESS;
     }
 }

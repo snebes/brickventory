@@ -5,21 +5,12 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'item_receipt_line')]
-class ItemReceiptLine
+class ItemReceiptLine extends AbstractTransactionLineEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: ItemReceipt::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -74,9 +65,4 @@ class ItemReceiptLine
     #[ORM\ManyToOne(targetEntity: CostLayer::class)]
     #[ORM\JoinColumn(nullable: true)]
     public ?CostLayer $costLayer = null;
-
-    public function __construct()
-    {
-        $this->uuid = Ulid::generate();
-    }
 }

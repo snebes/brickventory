@@ -63,7 +63,7 @@ class CreatePurchaseOrderCommand extends Command
         $vendorQuestion->setErrorMessage('Vendor %s is invalid.');
 
         $selectedVendorDisplay = $helper->ask($input, $output, $vendorQuestion);
-        
+
         // Find the selected vendor
         $selectedVendorCode = array_search($selectedVendorDisplay, $vendorChoices);
         $selectedVendor = $this->entityManager->getRepository(Vendor::class)
@@ -75,10 +75,10 @@ class CreatePurchaseOrderCommand extends Command
         }
 
         $io->success("Vendor selected: {$selectedVendor->vendorName}");
-        
+
         $referenceQuestion = new Question('Enter purchase order reference: ');
         $reference = $helper->ask($input, $output, $referenceQuestion);
-        
+
         if (empty($reference)) {
             $io->error('Purchase order reference is required.');
             return Command::FAILURE;
@@ -92,8 +92,8 @@ class CreatePurchaseOrderCommand extends Command
         $purchaseOrder->vendor = $selectedVendor;
         $purchaseOrder->orderNumber = $orderNumber;
         $purchaseOrder->reference = $reference;
-        $purchaseOrder->orderDate = new \DateTime();
-        $purchaseOrder->status = 'Pending Approval';
+        $purchaseOrder->setOrderDate(new \DateTime());
+        $purchaseOrder->status = PurchaseOrder::STATUS_PENDING_APPROVAL;
 
         // Auto-populate vendor defaults
         $purchaseOrder->paymentTerms = $selectedVendor->defaultPaymentTerms;
@@ -119,7 +119,7 @@ class CreatePurchaseOrderCommand extends Command
 
             // Parse the line input
             $parts = preg_split('/\s+/', trim($lineInput));
-            
+
             if (count($parts) !== 3) {
                 $io->error('Invalid format. Expected: itemId/SKU quantity rate');
                 continue;
@@ -141,7 +141,7 @@ class CreatePurchaseOrderCommand extends Command
 
             // Find the item by itemId or elementIds
             $item = $this->findItemByIdentifier($itemIdentifier);
-            
+
             if (!$item) {
                 $io->error("Item with identifier '{$itemIdentifier}' not found");
                 continue;
@@ -155,7 +155,7 @@ class CreatePurchaseOrderCommand extends Command
             $line->rate = (float)$rate;
 
             $purchaseOrder->lines->add($line);
-            
+
             $io->success("Added: {$item->itemName} (Qty: {$quantity}, Rate: {$rate})");
             $lineNumber++;
         }
@@ -202,7 +202,7 @@ class CreatePurchaseOrderCommand extends Command
 
         // Next, try to find by itemId
         $item = $this->entityManager->getRepository(Item::class)->findOneBy(['itemId' => $identifier]);
-        
+
         if ($item) {
             return $item;
         }

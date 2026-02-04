@@ -32,7 +32,7 @@ class SalesOrderCreatedEventHandler
         $orderEvent->metadata = json_encode([
             'order_number' => $salesOrder->orderNumber,
         ]);
-        
+
         $this->entityManager->persist($orderEvent);
 
         // Update inventory for each line item using event sourcing
@@ -42,11 +42,11 @@ class SalesOrderCreatedEventHandler
         foreach ($salesOrder->lines as $line) {
             $item = $line->item;
             $quantityOrdered = $line->quantityOrdered;
-            
+
             // Calculate how much can be committed vs backordered
             // Use current quantityAvailable (before this order's adjustments)
             $currentAvailable = max(0, $item->quantityAvailable);
-            
+
             if ($quantityOrdered <= $currentAvailable) {
                 // Full quantity can be committed
                 $quantityToCommit = $quantityOrdered;
@@ -56,7 +56,7 @@ class SalesOrderCreatedEventHandler
                 $quantityToCommit = $currentAvailable;
                 $quantityToBackorder = $quantityOrdered - $currentAvailable;
             }
-            
+
             // Create event in event store for item inventory
             $itemEvent = new ItemEvent();
             $itemEvent->item = $item;
@@ -69,19 +69,19 @@ class SalesOrderCreatedEventHandler
                 'quantity_committed' => $quantityToCommit,
                 'quantity_backordered' => $quantityToBackorder,
             ]);
-            
+
             $this->entityManager->persist($itemEvent);
-            
+
             // Update quantityCommitted when a sales order is created
             $item->quantityCommitted += $quantityToCommit;
-            
+
             // Update quantityBackOrdered if order exceeds available
             $item->quantityBackOrdered += $quantityToBackorder;
-            
+
             // Recalculate quantityAvailable
             // quantityAvailable = quantityOnHand - quantityCommitted
             $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
-            
+
             $this->entityManager->persist($item);
         }
 
@@ -93,7 +93,7 @@ class SalesOrderCreatedEventHandler
         return [
             'id' => $so->id,
             'orderNumber' => $so->orderNumber,
-            'orderDate' => $so->orderDate->format('Y-m-d H:i:s'),
+            'orderDate' => $so->getOrderDate()->format('Y-m-d H:i:s'),
             'status' => $so->status,
             'notes' => $so->notes,
             'lines' => array_map(function ($line) {

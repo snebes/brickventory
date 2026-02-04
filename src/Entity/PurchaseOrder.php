@@ -7,25 +7,44 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
+/**
+ * Purchase Order entity following NetSuite ERP workflow pattern.
+ *
+ * Status Progression: Pending Approval → Pending Receipt → Partially Received → Received → Closed/Cancelled
+ */
 #[ORM\Entity(repositoryClass: \App\Repository\PurchaseOrderRepository::class)]
 #[ORM\Table(name: 'purchase_order')]
 #[ORM\Index(columns: ['vendor_id'], name: 'idx_po_vendor')]
 #[ORM\Index(columns: ['status'], name: 'idx_po_status')]
 class PurchaseOrder extends AbstractTransactionalEntity
 {
+    // Status constants following NetSuite workflow
+    public const STATUS_PENDING_APPROVAL = 'pending_approval';
+    public const STATUS_PENDING_RECEIPT = 'pending_receipt';
+    public const STATUS_PARTIALLY_RECEIVED = 'partially_received';
+    public const STATUS_RECEIVED = 'received';
+    public const STATUS_CLOSED = 'closed';
+    public const STATUS_CANCELLED = 'cancelled';
+
+    // Allowed status values
+    public const VALID_STATUSES = [
+        self::STATUS_PENDING_APPROVAL,
+        self::STATUS_PENDING_RECEIPT,
+        self::STATUS_PARTIALLY_RECEIVED,
+        self::STATUS_RECEIVED,
+        self::STATUS_CLOSED,
+        self::STATUS_CANCELLED,
+    ];
+
     #[ORM\Column(type: 'string', length: 55, unique: true)]
     #[Validate\NotBlank]
     public string $orderNumber = '';
 
-    #[ORM\Column(type: 'datetime')]
-    #[Validate\NotNull]
-    public \DateTimeInterface $orderDate;
-
     #[ORM\Column(type: 'string', length: 50)]
-    public string $status = 'Pending Approval';
+    #[Validate\Choice(choices: self::VALID_STATUSES)]
+    public string $status = self::STATUS_PENDING_APPROVAL;
 
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $notes = null;
@@ -102,13 +121,42 @@ class PurchaseOrder extends AbstractTransactionalEntity
     public function __construct()
     {
         parent::__construct();
-        $this->orderDate = new \DateTime();
         $this->lines = new ArrayCollection();
     }
 
     /**
-     * Calculate and update financial totals from lines
+     * Get the transaction number (PO number).
      */
+    public function getTransactionNumber(): string
+    {
+        return $this->orderNumber;
+    }
+
+    /**
+     * Get the transaction type identifier.
+     */
+    public function getTransactionType(): string
+    {
+        return 'purchase_order';
+    }
+
+    /**
+     * Get the order date (alias for transactionDate).
+     */
+    public function getOrderDate(): \DateTimeInterface
+    {
+        return $this->transactionDate;
+    }
+
+    /**
+     * Set the order date (alias for transactionDate).
+     */
+    public function setOrderDate(\DateTimeInterface $date): self
+    {
+        $this->transactionDate = $date;
+        return $this;
+    }
+
     /**
      * Get location ID for API access
      */
@@ -132,5 +180,54 @@ class PurchaseOrder extends AbstractTransactionalEntity
         }
 
         $this->total = $this->subtotal + $this->taxTotal + $this->shippingCost;
+    }
+
+    /**
+     * Check if the PO can be received.
+     */
+    public function canBeReceived(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_PENDING_RECEIPT,
+            self::STATUS_PARTIALLY_RECEIVED,
+        ], true);
+    }
+
+    /**
+     * Update the status based on receipt state.
+     */
+    public function updateReceiptStatus(): void
+    {
+        if ($this->isFullyReceived()) {
+            $this->status = self::STATUS_RECEIVED;
+        } elseif ($this->isPartiallyReceived()) {
+            $this->status = self::STATUS_PARTIALLY_RECEIVED;
+        }
+    }
+
+    /**
+     * Check if all lines are fully received.
+     */
+    public function isFullyReceived(): bool
+    {
+        foreach ($this->lines as $line) {
+            if (!$line->isFullyReceived()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Check if any lines are partially received.
+     */
+    public function isPartiallyReceived(): bool
+    {
+        foreach ($this->lines as $line) {
+            if ($line->quantityReceived > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 }

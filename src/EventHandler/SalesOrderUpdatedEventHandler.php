@@ -44,12 +44,12 @@ class SalesOrderUpdatedEventHandler
                 if (!$itemId) {
                     continue;
                 }
-                
+
                 $item = $this->entityManager->getRepository(Item::class)->find($itemId);
                 if (!$item) {
                     continue;
                 }
-                
+
                 // Find the most recent ItemEvent for this sales order to get current committed/backordered quantities
                 // This could be either 'sales_order_created' or 'sales_order_updated' depending on whether
                 // the order has been updated before. We need to reverse the most recent quantities.
@@ -68,10 +68,10 @@ class SalesOrderUpdatedEventHandler
                     ->setMaxResults(1)
                     ->getQuery()
                     ->getOneOrNullResult();
-                
+
                 $quantityToCommit = 0;
                 $quantityToBackorder = 0;
-                
+
                 if ($mostRecentEvent && $mostRecentEvent->metadata) {
                     $metadata = json_decode($mostRecentEvent->metadata, true);
                     $quantityToCommit = $metadata['quantity_committed'] ?? 0;
@@ -80,7 +80,7 @@ class SalesOrderUpdatedEventHandler
                     // Fallback: use the quantityOrdered from the previous line data
                     $quantityToCommit = $lineData['quantityOrdered'] ?? 0;
                 }
-                
+
                 // Create reversal event in event store
                 $itemEvent = new ItemEvent();
                 $itemEvent->item = $item;
@@ -93,16 +93,16 @@ class SalesOrderUpdatedEventHandler
                     'quantity_committed_reversed' => $quantityToCommit,
                     'quantity_backordered_reversed' => $quantityToBackorder,
                 ]);
-                
+
                 $this->entityManager->persist($itemEvent);
-                
+
                 // Reverse the committed and backordered quantities
                 $item->quantityCommitted = max(0, $item->quantityCommitted - $quantityToCommit);
                 $item->quantityBackOrdered = max(0, $item->quantityBackOrdered - $quantityToBackorder);
-                
+
                 // Recalculate quantityAvailable
                 $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
-                
+
                 $this->entityManager->persist($item);
             }
         }
@@ -112,10 +112,10 @@ class SalesOrderUpdatedEventHandler
         foreach ($salesOrder->lines as $line) {
             $item = $line->item;
             $quantityOrdered = $line->quantityOrdered;
-            
+
             // Calculate how much can be committed vs backordered
             $currentAvailable = max(0, $item->quantityAvailable);
-            
+
             if ($quantityOrdered <= $currentAvailable) {
                 $quantityToCommit = $quantityOrdered;
                 $quantityToBackorder = 0;
@@ -123,7 +123,7 @@ class SalesOrderUpdatedEventHandler
                 $quantityToCommit = $currentAvailable;
                 $quantityToBackorder = $quantityOrdered - $currentAvailable;
             }
-            
+
             // Create event in event store for item inventory
             $itemEvent = new ItemEvent();
             $itemEvent->item = $item;
@@ -136,16 +136,16 @@ class SalesOrderUpdatedEventHandler
                 'quantity_committed' => $quantityToCommit,
                 'quantity_backordered' => $quantityToBackorder,
             ]);
-            
+
             $this->entityManager->persist($itemEvent);
-            
+
             // Update quantityCommitted and quantityBackOrdered
             $item->quantityCommitted += $quantityToCommit;
             $item->quantityBackOrdered += $quantityToBackorder;
-            
+
             // Recalculate quantityAvailable
             $item->quantityAvailable = $item->quantityOnHand - $item->quantityCommitted;
-            
+
             $this->entityManager->persist($item);
         }
 
@@ -157,7 +157,7 @@ class SalesOrderUpdatedEventHandler
         return [
             'id' => $so->id,
             'orderNumber' => $so->orderNumber,
-            'orderDate' => $so->orderDate->format('Y-m-d H:i:s'),
+            'orderDate' => $so->getOrderDate()->format('Y-m-d H:i:s'),
             'status' => $so->status,
             'notes' => $so->notes,
             'lines' => array_map(function ($line) {

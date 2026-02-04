@@ -122,7 +122,7 @@ class BillPaymentService
             $discountPercent = (float) $matches[1] / 100;
             $discountDays = (int) $matches[2];
 
-            $daysSinceBill = $bill->billDate->diff($paymentDate)->days;
+            $daysSinceBill = $bill->getBillDate()->diff($paymentDate)->days;
 
             if ($daysSinceBill <= $discountDays) {
                 return $bill->total * $discountPercent;
@@ -144,7 +144,7 @@ class BillPaymentService
         // Reverse all applications
         foreach ($payment->applications as $application) {
             $bill = $application->vendorBill;
-            
+
             // Reverse the payment on the bill
             $bill->amountPaid -= $application->amountApplied;
             $bill->discountAmount -= $application->discountApplied;

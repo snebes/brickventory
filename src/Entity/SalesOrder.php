@@ -7,12 +7,11 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
  * Sales Order entity following NetSuite workflow pattern.
- * 
+ *
  * Status Progression: Pending Approval → Pending Fulfillment → Partially Fulfilled → Fulfilled → Billed → Closed/Cancelled
  */
 #[ORM\Entity(repositoryClass: \App\Repository\SalesOrderRepository::class)]
@@ -41,10 +40,6 @@ class SalesOrder extends AbstractTransactionalEntity
     #[ORM\Column(type: 'string', length: 55, unique: true)]
     #[Validate\NotBlank]
     public string $orderNumber = '';
-
-    #[ORM\Column(type: 'datetime')]
-    #[Validate\NotNull]
-    public \DateTimeInterface $orderDate;
 
     #[ORM\Column(type: 'string', length: 50)]
     #[Validate\Choice(choices: self::VALID_STATUSES)]
@@ -75,9 +70,41 @@ class SalesOrder extends AbstractTransactionalEntity
     public function __construct()
     {
         parent::__construct();
-        $this->orderDate = new \DateTime();
         $this->lines = new ArrayCollection();
         $this->fulfillments = new ArrayCollection();
+    }
+
+    /**
+     * Get the transaction number (SO number).
+     */
+    public function getTransactionNumber(): string
+    {
+        return $this->orderNumber;
+    }
+
+    /**
+     * Get the transaction type identifier.
+     */
+    public function getTransactionType(): string
+    {
+        return 'sales_order';
+    }
+
+    /**
+     * Get the order date (alias for transactionDate).
+     */
+    public function getOrderDate(): \DateTimeInterface
+    {
+        return $this->transactionDate;
+    }
+
+    /**
+     * Set the order date (alias for transactionDate).
+     */
+    public function setOrderDate(\DateTimeInterface $date): self
+    {
+        $this->transactionDate = $date;
+        return $this;
     }
 
     /**

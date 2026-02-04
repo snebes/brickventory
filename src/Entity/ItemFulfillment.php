@@ -11,7 +11,7 @@ use Symfony\Component\Validator\Constraints as Validate;
 
 /**
  * Item Fulfillment entity for tracking physical shipments of sales orders.
- * 
+ *
  * Status Progression: Picked → Packed → Shipped → Delivered
  */
 #[ORM\Entity]
@@ -48,10 +48,6 @@ class ItemFulfillment extends AbstractTransactionalEntity
     #[ORM\ManyToOne(targetEntity: Location::class)]
     #[ORM\JoinColumn(nullable: true)]
     public ?Location $fulfillFromLocation = null;
-
-    #[ORM\Column(type: 'datetime')]
-    #[Validate\NotNull]
-    public \DateTimeInterface $fulfillmentDate;
 
     #[ORM\Column(type: 'string', length: 50)]
     #[Validate\Choice(choices: self::VALID_STATUSES)]
@@ -94,8 +90,40 @@ class ItemFulfillment extends AbstractTransactionalEntity
     {
         parent::__construct();
         $this->fulfillmentNumber = 'IF-' . date('YmdHis') . '-' . substr((string) microtime(true), -4);
-        $this->fulfillmentDate = new \DateTime();
         $this->lines = new ArrayCollection();
+    }
+
+    /**
+     * Get the transaction number (fulfillment number).
+     */
+    public function getTransactionNumber(): string
+    {
+        return $this->fulfillmentNumber;
+    }
+
+    /**
+     * Get the transaction type identifier.
+     */
+    public function getTransactionType(): string
+    {
+        return 'item_fulfillment';
+    }
+
+    /**
+     * Get the fulfillment date (alias for transactionDate).
+     */
+    public function getFulfillmentDate(): \DateTimeInterface
+    {
+        return $this->transactionDate;
+    }
+
+    /**
+     * Set the fulfillment date (alias for transactionDate).
+     */
+    public function setFulfillmentDate(\DateTimeInterface $date): self
+    {
+        $this->transactionDate = $date;
+        return $this;
     }
 
     /**
@@ -113,7 +141,7 @@ class ItemFulfillment extends AbstractTransactionalEntity
     {
         $this->status = self::STATUS_SHIPPED;
         $this->shippedAt = new \DateTime();
-        
+
         if ($trackingNumber !== null) {
             $this->trackingNumber = $trackingNumber;
         }

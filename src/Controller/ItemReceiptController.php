@@ -32,7 +32,7 @@ class ItemReceiptController extends AbstractController
     public function list(): JsonResponse
     {
         $receipts = $this->entityManager->getRepository(ItemReceipt::class)->findAll();
-        
+
         $data = array_map(function (ItemReceipt $receipt) {
             return [
                 'id' => $receipt->id,
@@ -47,7 +47,7 @@ class ItemReceiptController extends AbstractController
                     'locationCode' => $receipt->location->locationCode,
                     'locationName' => $receipt->location->locationName,
                 ],
-                'receiptDate' => $receipt->receiptDate->format('Y-m-d H:i:s'),
+                'receiptDate' => $receipt->getReceiptDate()->format('Y-m-d H:i:s'),
                 'status' => $receipt->status,
                 'notes' => $receipt->notes,
                 'lines' => array_map(function (ItemReceiptLine $line) {
@@ -72,7 +72,7 @@ class ItemReceiptController extends AbstractController
     public function get(int $id): JsonResponse
     {
         $receipt = $this->entityManager->getRepository(ItemReceipt::class)->find($id);
-        
+
         if (!$receipt) {
             return $this->json(['error' => 'Item receipt not found'], Response::HTTP_NOT_FOUND);
         }
@@ -90,7 +90,7 @@ class ItemReceiptController extends AbstractController
                 'locationCode' => $receipt->location->locationCode,
                 'locationName' => $receipt->location->locationName,
             ],
-            'receiptDate' => $receipt->receiptDate->format('Y-m-d H:i:s'),
+            'receiptDate' => $receipt->getReceiptDate()->format('Y-m-d H:i:s'),
             'status' => $receipt->status,
             'notes' => $receipt->notes,
             'lines' => array_map(function (ItemReceiptLine $line) {
@@ -112,7 +112,7 @@ class ItemReceiptController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data) {
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
@@ -133,7 +133,7 @@ class ItemReceiptController extends AbstractController
             // Find purchase order with pessimistic lock to prevent concurrent status updates
             $purchaseOrder = $this->entityManager->getRepository(PurchaseOrder::class)
                 ->find($data['purchaseOrderId'], \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
-                
+
             if (!$purchaseOrder) {
                 $this->entityManager->rollback();
                 return $this->json(['error' => 'Purchase order not found'], Response::HTTP_NOT_FOUND);
@@ -168,9 +168,9 @@ class ItemReceiptController extends AbstractController
             $receipt->purchaseOrder = $purchaseOrder;
             $receipt->location = $location;
             $receipt->vendor = $purchaseOrder->vendor;
-            $receipt->receiptDate = isset($data['receiptDate']) ? new \DateTime($data['receiptDate']) : new \DateTime();
+            $receipt->setReceiptDate(isset($data['receiptDate']) ? new \DateTime($data['receiptDate']) : new \DateTime());
             $receipt->notes = $data['notes'] ?? null;
-            $receipt->status = $data['status'] ?? 'received';
+            $receipt->status = $data['status'] ?? ItemReceipt::STATUS_RECEIVED;
 
             // Process receipt lines
             foreach ($data['lines'] as $lineData) {
@@ -188,7 +188,7 @@ class ItemReceiptController extends AbstractController
                 // Use pessimistic locking to prevent concurrent receipt race conditions
                 $poLine = $this->entityManager->getRepository(PurchaseOrderLine::class)
                     ->find($lineData['purchaseOrderLineId'], \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
-                    
+
                 if (!$poLine) {
                     $this->entityManager->rollback();
                     return $this->json(['error' => 'Purchase order line not found: ' . $lineData['purchaseOrderLineId']], Response::HTTP_NOT_FOUND);
@@ -196,14 +196,14 @@ class ItemReceiptController extends AbstractController
 
                 // Validate quantity
                 $quantityReceived = (int)$lineData['quantityReceived'];
-                
+
                 // Skip lines with zero quantity (allows partial receiving)
                 if ($quantityReceived === 0) {
                     continue;
                 }
-                
+
                 $remainingToReceive = $poLine->quantityOrdered - $poLine->quantityReceived;
-                
+
                 if ($quantityReceived < 0 || $quantityReceived > $remainingToReceive) {
                     $this->entityManager->rollback();
                     return $this->json([
@@ -218,7 +218,7 @@ class ItemReceiptController extends AbstractController
                 $receiptLine->purchaseOrderLine = $poLine;
                 $receiptLine->quantityReceived = $quantityReceived;
                 $receiptLine->unitCost = $poLine->rate;  // Capture unit cost from PO line for FIFO accounting
-                
+
                 $receipt->lines->add($receiptLine);
                 // Note: No need to persist - cascade persist from ItemReceipt handles this
 
@@ -270,7 +270,7 @@ class ItemReceiptController extends AbstractController
     public function delete(int $id): JsonResponse
     {
         $receipt = $this->entityManager->getRepository(ItemReceipt::class)->find($id);
-        
+
         if (!$receipt) {
             return $this->json(['error' => 'Item receipt not found'], Response::HTTP_NOT_FOUND);
         }

@@ -7,19 +7,18 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
  * Inventory Adjustment record for manually adjusting inventory quantities.
  * Modeled after NetSuite ERP inventory adjustments.
- * 
+ *
  * Status Workflow:
  * Draft -> Pending Approval -> Approved -> Posted
  * Any status can transition to Void
  */
 #[ORM\Entity]
-#[ORM\Index(columns: ['status', 'adjustment_date'])]
+#[ORM\Index(columns: ['status', 'transaction_date'])]
 #[ORM\Index(columns: ['adjustment_type', 'status'])]
 class InventoryAdjustment extends AbstractTransactionalEntity
 {
@@ -63,10 +62,6 @@ class InventoryAdjustment extends AbstractTransactionalEntity
     #[Validate\NotBlank]
     public string $adjustmentNumber = '';
 
-    #[ORM\Column(type: 'datetime')]
-    #[Validate\NotNull]
-    public \DateTimeInterface $adjustmentDate;
-
     #[ORM\Column(type: 'string', length: 50)]
     #[Validate\NotBlank]
     #[Validate\Choice(choices: self::VALID_TYPES)]
@@ -76,15 +71,9 @@ class InventoryAdjustment extends AbstractTransactionalEntity
     #[Validate\NotBlank]
     public string $reason = '';
 
-    #[ORM\Column(type: 'text', nullable: true)]
-    public ?string $memo = null;
-
     #[ORM\Column(type: 'string', length: 50)]
     #[Validate\Choice(choices: self::VALID_STATUSES)]
     public string $status = self::STATUS_DRAFT;
-
-    #[ORM\Column(type: 'string', length: 10, nullable: true)]
-    public ?string $postingPeriod = null;
 
     /**
      * Location for the adjustment - required field following NetSuite ERP pattern.
@@ -132,8 +121,40 @@ class InventoryAdjustment extends AbstractTransactionalEntity
     public function __construct()
     {
         parent::__construct();
-        $this->adjustmentDate = new \DateTime();
         $this->lines = new ArrayCollection();
+    }
+
+    /**
+     * Get the transaction number (adjustment number).
+     */
+    public function getTransactionNumber(): string
+    {
+        return $this->adjustmentNumber;
+    }
+
+    /**
+     * Get the transaction type identifier.
+     */
+    public function getTransactionType(): string
+    {
+        return 'inventory_adjustment';
+    }
+
+    /**
+     * Get the adjustment date (alias for transactionDate).
+     */
+    public function getAdjustmentDate(): \DateTimeInterface
+    {
+        return $this->transactionDate;
+    }
+
+    /**
+     * Set the adjustment date (alias for transactionDate).
+     */
+    public function setAdjustmentDate(\DateTimeInterface $date): self
+    {
+        $this->transactionDate = $date;
+        return $this;
     }
 
     public function isPosted(): bool

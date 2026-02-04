@@ -21,7 +21,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Controller for Item Fulfillment operations following NetSuite workflow.
- * 
+ *
  * Supports: Create fulfillment, list fulfillments, get fulfillment details,
  * mark as shipped, and list pending fulfillments.
  */
@@ -48,7 +48,7 @@ class ItemFulfillmentController extends AbstractController
         $qb = $this->entityManager
             ->getRepository(ItemFulfillment::class)
             ->createQueryBuilder('f')
-            ->orderBy('f.fulfillmentDate', 'DESC');
+            ->orderBy('f.transactionDate', 'DESC');
 
         if ($status) {
             $qb->andWhere('f.status = :status')
@@ -89,7 +89,7 @@ class ItemFulfillmentController extends AbstractController
 
     /**
      * Create a new fulfillment for a sales order.
-     * 
+     *
      * Request body:
      * {
      *   "salesOrderId": 123,
@@ -147,7 +147,7 @@ class ItemFulfillmentController extends AbstractController
             $fulfillment->notes = $data['notes'] ?? null;
 
             if (!empty($data['fulfillmentDate'])) {
-                $fulfillment->fulfillmentDate = new \DateTime($data['fulfillmentDate']);
+                $fulfillment->setFulfillmentDate(new \DateTime($data['fulfillmentDate']));
             }
 
             // Process fulfillment lines
@@ -217,7 +217,7 @@ class ItemFulfillmentController extends AbstractController
 
     /**
      * Mark a fulfillment as shipped.
-     * 
+     *
      * Request body:
      * {
      *   "trackingNumber": "1234567890",
@@ -265,7 +265,7 @@ class ItemFulfillmentController extends AbstractController
 
     /**
      * List pending fulfillments (not yet shipped).
-     * 
+     *
      * Note: priority: 1 ensures this route is matched before the /{id} route pattern,
      * preventing "pending" from being interpreted as an ID parameter.
      */
@@ -280,7 +280,7 @@ class ItemFulfillmentController extends AbstractController
             ->createQueryBuilder('f')
             ->where('f.status IN (:statuses)')
             ->setParameter('statuses', [ItemFulfillment::STATUS_PICKED, ItemFulfillment::STATUS_PACKED])
-            ->orderBy('f.fulfillmentDate', 'ASC')
+            ->orderBy('f.transactionDate', 'ASC')
             ->setFirstResult(($page - 1) * $perPage)
             ->setMaxResults($perPage)
             ->getQuery()
@@ -310,7 +310,7 @@ class ItemFulfillmentController extends AbstractController
             ->createQueryBuilder('f')
             ->where('f.salesOrder = :salesOrder')
             ->setParameter('salesOrder', $salesOrder)
-            ->orderBy('f.fulfillmentDate', 'DESC')
+            ->orderBy('f.transactionDate', 'DESC')
             ->getQuery()
             ->getResult();
 
@@ -330,7 +330,7 @@ class ItemFulfillmentController extends AbstractController
                 'id' => $f->salesOrder->id,
                 'orderNumber' => $f->salesOrder->orderNumber,
             ],
-            'fulfillmentDate' => $f->fulfillmentDate->format('Y-m-d H:i:s'),
+            'fulfillmentDate' => $f->getFulfillmentDate()->format('Y-m-d H:i:s'),
             'status' => $f->status,
             'shipMethod' => $f->shipMethod,
             'trackingNumber' => $f->trackingNumber,

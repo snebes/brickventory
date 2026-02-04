@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -16,16 +15,8 @@ use Symfony\Component\Validator\Constraints as Validate;
 #[ORM\Index(columns: ['landed_cost_id'], name: 'idx_lca_landed_cost')]
 #[ORM\Index(columns: ['receipt_line_id'], name: 'idx_lca_receipt_line')]
 #[ORM\Index(columns: ['cost_layer_id'], name: 'idx_lca_cost_layer')]
-class LandedCostAllocation
+class LandedCostAllocation extends AbstractTransactionLineEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: LandedCost::class, inversedBy: 'allocations')]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -60,9 +51,4 @@ class LandedCostAllocation
 
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
     public float $adjustedUnitCost = 0.0;
-
-    public function __construct()
-    {
-        $this->uuid = Ulid::generate();
-    }
 }

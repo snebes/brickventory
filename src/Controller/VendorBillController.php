@@ -28,11 +28,11 @@ class VendorBillController extends AbstractController
     {
         $vendorId = $request->query->get('vendorId');
         $status = $request->query->get('status');
-        
+
         $qb = $this->entityManager
             ->getRepository(VendorBill::class)
             ->createQueryBuilder('vb')
-            ->orderBy('vb.billDate', 'DESC');
+            ->orderBy('vb.transactionDate', 'DESC');
 
         if ($vendorId) {
             $qb->andWhere('vb.vendor = :vendorId')
@@ -55,7 +55,7 @@ class VendorBillController extends AbstractController
     public function get(int $id): JsonResponse
     {
         $bill = $this->entityManager->getRepository(VendorBill::class)->find($id);
-        
+
         if (!$bill) {
             return $this->json(['error' => 'Vendor bill not found'], Response::HTTP_NOT_FOUND);
         }
@@ -67,10 +67,10 @@ class VendorBillController extends AbstractController
     public function createFromReceipt(int $receiptId, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        
+
         try {
             $receipt = $this->entityManager->getRepository(ItemReceipt::class)->find($receiptId);
-            
+
             if (!$receipt) {
                 return $this->json(['error' => 'Item receipt not found'], Response::HTTP_NOT_FOUND);
             }
@@ -95,10 +95,10 @@ class VendorBillController extends AbstractController
     public function performThreeWayMatch(int $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        
+
         try {
             $bill = $this->entityManager->getRepository(VendorBill::class)->find($id);
-            
+
             if (!$bill) {
                 return $this->json(['error' => 'Vendor bill not found'], Response::HTTP_NOT_FOUND);
             }
@@ -122,20 +122,20 @@ class VendorBillController extends AbstractController
     public function approve(int $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        
+
         try {
             $bill = $this->entityManager->getRepository(VendorBill::class)->find($id);
-            
+
             if (!$bill) {
                 return $this->json(['error' => 'Vendor bill not found'], Response::HTTP_NOT_FOUND);
             }
 
             $approverId = $data['approverId'] ?? null;
-            
+
             if (!$approverId) {
                 return $this->json(['error' => 'approverId is required'], Response::HTTP_BAD_REQUEST);
             }
-            
+
             $this->vendorBillService->approveBill($bill, $approverId);
 
             return $this->json([
@@ -159,7 +159,7 @@ class VendorBillController extends AbstractController
             ],
             'vendorInvoiceNumber' => $bill->vendorInvoiceNumber,
             'vendorInvoiceDate' => $bill->vendorInvoiceDate?->format('Y-m-d'),
-            'billDate' => $bill->billDate->format('Y-m-d'),
+            'billDate' => $bill->getBillDate()->format('Y-m-d'),
             'dueDate' => $bill->dueDate->format('Y-m-d'),
             'status' => $bill->status,
             'subtotal' => $bill->subtotal,

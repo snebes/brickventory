@@ -27,30 +27,30 @@ class InventoryAdjustmentController extends AbstractController
     public function list(Request $request): JsonResponse
     {
         $qb = $this->entityManager->getRepository(InventoryAdjustment::class)->createQueryBuilder('a');
-        
+
         // Filter by status
         if ($request->query->has('status')) {
             $qb->andWhere('a.status = :status')
                ->setParameter('status', $request->query->get('status'));
         }
-        
+
         // Filter by adjustment type
         if ($request->query->has('type')) {
             $qb->andWhere('a.adjustmentType = :type')
                ->setParameter('type', $request->query->get('type'));
         }
-        
+
         // Order by date descending
-        $qb->orderBy('a.adjustmentDate', 'DESC');
-        
+        $qb->orderBy('a.transactionDate', 'DESC');
+
         $adjustments = $qb->getQuery()->getResult();
-        
+
         $data = array_map(function (InventoryAdjustment $adjustment) {
             return [
                 'id' => $adjustment->id,
                 'uuid' => $adjustment->uuid,
                 'adjustmentNumber' => $adjustment->adjustmentNumber,
-                'adjustmentDate' => $adjustment->adjustmentDate->format('Y-m-d H:i:s'),
+                'adjustmentDate' => $adjustment->getAdjustmentDate()->format('Y-m-d H:i:s'),
                 'adjustmentType' => $adjustment->adjustmentType,
                 'reason' => $adjustment->reason,
                 'memo' => $adjustment->memo,
@@ -78,7 +78,7 @@ class InventoryAdjustmentController extends AbstractController
     public function get(int $id): JsonResponse
     {
         $adjustment = $this->entityManager->getRepository(InventoryAdjustment::class)->find($id);
-        
+
         if (!$adjustment) {
             return $this->json(['error' => 'Inventory adjustment not found'], Response::HTTP_NOT_FOUND);
         }
@@ -87,7 +87,7 @@ class InventoryAdjustmentController extends AbstractController
             'id' => $adjustment->id,
             'uuid' => $adjustment->uuid,
             'adjustmentNumber' => $adjustment->adjustmentNumber,
-            'adjustmentDate' => $adjustment->adjustmentDate->format('Y-m-d H:i:s'),
+            'adjustmentDate' => $adjustment->getAdjustmentDate()->format('Y-m-d H:i:s'),
             'adjustmentType' => $adjustment->adjustmentType,
             'reason' => $adjustment->reason,
             'memo' => $adjustment->memo,
@@ -138,7 +138,7 @@ class InventoryAdjustmentController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data) {
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
@@ -189,7 +189,7 @@ class InventoryAdjustmentController extends AbstractController
     {
         try {
             $this->adjustmentService->postAdjustment($id);
-            
+
             return $this->json([
                 'message' => 'Adjustment posted successfully'
             ]);
@@ -204,14 +204,14 @@ class InventoryAdjustmentController extends AbstractController
     public function reverse(int $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
+
         if (empty($data['reason'])) {
             return $this->json(['error' => 'Reason is required'], Response::HTTP_BAD_REQUEST);
         }
 
         try {
             $reversingAdjustment = $this->adjustmentService->reverseAdjustment($id, $data['reason']);
-            
+
             return $this->json([
                 'id' => $reversingAdjustment->id,
                 'adjustmentNumber' => $reversingAdjustment->adjustmentNumber,
@@ -229,10 +229,10 @@ class InventoryAdjustmentController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $approverId = $data['approverId'] ?? 'system'; // TODO: Get from security context
-        
+
         try {
             $this->adjustmentService->approveAdjustment($id, $approverId);
-            
+
             return $this->json([
                 'message' => 'Adjustment approved successfully'
             ]);
@@ -247,7 +247,7 @@ class InventoryAdjustmentController extends AbstractController
     public function submitForApproval(int $id): JsonResponse
     {
         $adjustment = $this->entityManager->getRepository(InventoryAdjustment::class)->find($id);
-        
+
         if (!$adjustment) {
             return $this->json(['error' => 'Inventory adjustment not found'], Response::HTTP_NOT_FOUND);
         }
@@ -272,16 +272,16 @@ class InventoryAdjustmentController extends AbstractController
             ->createQueryBuilder('a')
             ->where('a.status = :status')
             ->setParameter('status', InventoryAdjustment::STATUS_PENDING_APPROVAL)
-            ->orderBy('a.adjustmentDate', 'DESC')
+            ->orderBy('a.transactionDate', 'DESC')
             ->getQuery()
             ->getResult();
-        
+
         $data = array_map(function (InventoryAdjustment $adjustment) {
             return [
                 'id' => $adjustment->id,
                 'uuid' => $adjustment->uuid,
                 'adjustmentNumber' => $adjustment->adjustmentNumber,
-                'adjustmentDate' => $adjustment->adjustmentDate->format('Y-m-d H:i:s'),
+                'adjustmentDate' => $adjustment->getAdjustmentDate()->format('Y-m-d H:i:s'),
                 'adjustmentType' => $adjustment->adjustmentType,
                 'reason' => $adjustment->reason,
                 'location' => [
@@ -302,7 +302,7 @@ class InventoryAdjustmentController extends AbstractController
     public function update(int $id, Request $request): JsonResponse
     {
         $adjustment = $this->entityManager->getRepository(InventoryAdjustment::class)->find($id);
-        
+
         if (!$adjustment) {
             return $this->json(['error' => 'Inventory adjustment not found'], Response::HTTP_NOT_FOUND);
         }
@@ -316,7 +316,7 @@ class InventoryAdjustmentController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data) {
             return $this->json(['error' => 'Invalid JSON'], Response::HTTP_BAD_REQUEST);
         }
@@ -338,7 +338,7 @@ class InventoryAdjustmentController extends AbstractController
 
             // Update basic fields
             if (isset($data['adjustmentDate'])) {
-                $adjustment->adjustmentDate = new \DateTime($data['adjustmentDate']);
+                $adjustment->setAdjustmentDate(new \DateTime($data['adjustmentDate']));
             }
             if (isset($data['reason'])) {
                 $adjustment->reason = $data['reason'];
@@ -360,11 +360,11 @@ class InventoryAdjustmentController extends AbstractController
                 $totalQuantityChange = 0.0;
                 foreach ($data['lines'] as $lineData) {
                     $item = $this->entityManager->getRepository(\App\Entity\Item::class)->find($lineData['itemId']);
-                    
+
                     if (!$item) {
                         throw new \InvalidArgumentException("Item with ID {$lineData['itemId']} not found");
                     }
-                    
+
                     $line = new InventoryAdjustmentLine();
                     $line->inventoryAdjustment = $adjustment;
                     $line->item = $item;
@@ -373,17 +373,17 @@ class InventoryAdjustmentController extends AbstractController
                     $line->quantityBefore = (float)$item->quantityOnHand;
                     $line->quantityAfter = $line->quantityBefore + $lineData['quantityChange'];
                     $line->notes = $lineData['notes'] ?? null;
-                    
+
                     if (isset($lineData['unitCost'])) {
                         $line->currentUnitCost = $lineData['unitCost'];
                         $line->totalCostImpact = $lineData['quantityChange'] * $lineData['unitCost'];
                     }
-                    
+
                     $adjustment->lines->add($line);
                     $this->entityManager->persist($line);
                     $totalQuantityChange += $lineData['quantityChange'];
                 }
-                
+
                 $adjustment->totalQuantityChange = $totalQuantityChange;
             }
 
@@ -411,7 +411,7 @@ class InventoryAdjustmentController extends AbstractController
     public function delete(int $id): JsonResponse
     {
         $adjustment = $this->entityManager->getRepository(InventoryAdjustment::class)->find($id);
-        
+
         if (!$adjustment) {
             return $this->json(['error' => 'Inventory adjustment not found'], Response::HTTP_NOT_FOUND);
         }

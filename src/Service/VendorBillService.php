@@ -34,7 +34,7 @@ class VendorBillService
         $bill->vendorInvoiceDate = $vendorInvoiceDate;
         $bill->purchaseOrder = $receipt->purchaseOrder;
         $bill->itemReceipt = $receipt;
-        $bill->paymentTerms = $receipt->purchaseOrder->paymentTerms 
+        $bill->paymentTerms = $receipt->purchaseOrder->paymentTerms
             ?? $bill->vendor->defaultPaymentTerms;
 
         // Calculate due date based on payment terms
@@ -107,15 +107,15 @@ class VendorBillService
 
             // Check quantity match (Bill vs Receipt)
             $qtyVariance = abs($billLine->quantity - $receiptLine->quantityAccepted);
-            $qtyVariancePct = $receiptLine->quantityAccepted > 0 
-                ? ($qtyVariance / $receiptLine->quantityAccepted * 100) 
+            $qtyVariancePct = $receiptLine->quantityAccepted > 0
+                ? ($qtyVariance / $receiptLine->quantityAccepted * 100)
                 : 0;
             $qtyMatch = $qtyVariancePct <= $qtyTolerance;
 
             // Check price match (Bill vs PO)
             $priceVariance = abs($billLine->unitCost - $poLine->rate);
-            $priceVariancePct = $poLine->rate > 0 
-                ? ($priceVariance / $poLine->rate * 100) 
+            $priceVariancePct = $poLine->rate > 0
+                ? ($priceVariance / $poLine->rate * 100)
                 : 0;
             $priceMatch = $priceVariancePct <= $priceTolerance;
 
@@ -177,14 +177,14 @@ class VendorBillService
     private function calculateDueDate(VendorBill $bill): void
     {
         $terms = $bill->paymentTerms;
-        
+
         // Parse common terms like "Net 30", "Net 60", "2/10 Net 30"
         if (preg_match('/Net\s+(\d+)/i', $terms ?? '', $matches)) {
             $days = (int) $matches[1];
-            $bill->dueDate = (clone $bill->billDate)->modify("+{$days} days");
+            $bill->dueDate = (clone $bill->getBillDate())->modify("+{$days} days");
         } else {
             // Default to 30 days
-            $bill->dueDate = (clone $bill->billDate)->modify('+30 days');
+            $bill->dueDate = (clone $bill->getBillDate())->modify('+30 days');
         }
     }
 }

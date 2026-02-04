@@ -12,13 +12,13 @@ use Symfony\Component\Validator\Constraints as Validate;
 /**
  * Physical Count record for performing physical inventory counts.
  * Tracks the process of counting inventory and creating adjustments from variances.
- * 
+ *
  * Status Workflow:
  * Planned -> In Progress -> Completed -> Adjustment Created
  * Any status can transition to Cancelled
  */
 #[ORM\Entity]
-#[ORM\Index(columns: ['status', 'count_date'])]
+#[ORM\Index(columns: ['status', 'transaction_date'])]
 #[ORM\Index(columns: ['location_id', 'status'])]
 class PhysicalCount extends AbstractTransactionalEntity
 {
@@ -56,10 +56,6 @@ class PhysicalCount extends AbstractTransactionalEntity
     #[Validate\Choice(choices: self::VALID_TYPES)]
     public string $countType = self::TYPE_FULL_PHYSICAL;
 
-    #[ORM\Column(type: 'datetime')]
-    #[Validate\NotNull]
-    public \DateTimeInterface $countDate;
-
     #[ORM\Column(type: 'integer', nullable: true)]
     public ?int $locationId = null;
 
@@ -88,8 +84,40 @@ class PhysicalCount extends AbstractTransactionalEntity
     public function __construct()
     {
         parent::__construct();
-        $this->countDate = new \DateTime();
         $this->lines = new ArrayCollection();
+    }
+
+    /**
+     * Get the transaction number (count number).
+     */
+    public function getTransactionNumber(): string
+    {
+        return $this->countNumber;
+    }
+
+    /**
+     * Get the transaction type identifier.
+     */
+    public function getTransactionType(): string
+    {
+        return 'physical_count';
+    }
+
+    /**
+     * Get the count date (alias for transactionDate).
+     */
+    public function getCountDate(): \DateTimeInterface
+    {
+        return $this->transactionDate;
+    }
+
+    /**
+     * Set the count date (alias for transactionDate).
+     */
+    public function setCountDate(\DateTimeInterface $date): self
+    {
+        $this->transactionDate = $date;
+        return $this;
     }
 
     public function isCompleted(): bool

@@ -5,26 +5,17 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
  * Item Fulfillment Line entity for tracking line-level fulfillment details.
- * 
+ *
  * Links fulfillment records to specific sales order lines and tracks
  * the quantity fulfilled from each line.
  */
 #[ORM\Entity]
-class ItemFulfillmentLine
+class ItemFulfillmentLine extends AbstractTransactionLineEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: ItemFulfillment::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -65,9 +56,4 @@ class ItemFulfillmentLine
      */
     #[ORM\Column(type: 'string', length: 50, nullable: true)]
     public ?string $binLocation = null;
-
-    public function __construct()
-    {
-        $this->uuid = Ulid::generate();
-    }
 }

@@ -54,8 +54,8 @@ class ItemReceiptService
         $costLayer->unitCost = $unitCost;
         $costLayer->originalUnitCost = $unitCost;
         $costLayer->landedCostAdjustments = 0.0;
-        $costLayer->receiptDate = $receiptLine->itemReceipt->receiptDate;
-        
+        $costLayer->receiptDate = $receiptLine->itemReceipt->getReceiptDate();
+
         // Set vendor if available
         if ($receiptLine->itemReceipt->vendor) {
             $costLayer->vendor = $receiptLine->itemReceipt->vendor;
@@ -164,8 +164,8 @@ class ItemReceiptService
             $receiptLine->binLocation = $lineData['binLocation'] ?? null;
             $receiptLine->lotNumber = $lineData['lotNumber'] ?? null;
             $receiptLine->serialNumbers = $lineData['serialNumbers'] ?? null;
-            $receiptLine->expirationDate = isset($lineData['expirationDate']) 
-                ? new \DateTime($lineData['expirationDate']) 
+            $receiptLine->expirationDate = isset($lineData['expirationDate'])
+                ? new \DateTime($lineData['expirationDate'])
                 : null;
             $receiptLine->receivingNotes = $lineData['receivingNotes'] ?? null;
 

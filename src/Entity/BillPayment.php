@@ -10,15 +10,29 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
- * Bill Payment entity for tracking payments made to vendors
+ * Bill Payment entity for tracking payments made to vendors.
+ *
+ * Status Progression: Draft → Posted / Void
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'bill_payment')]
 #[ORM\Index(columns: ['vendor_id'], name: 'idx_payment_vendor')]
 #[ORM\Index(columns: ['status'], name: 'idx_payment_status')]
-#[ORM\Index(columns: ['payment_date'], name: 'idx_payment_date')]
+#[ORM\Index(columns: ['transaction_date'], name: 'idx_payment_date')]
 class BillPayment extends AbstractTransactionalEntity
 {
+    // Status constants following NetSuite workflow
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_POSTED = 'posted';
+    public const STATUS_VOID = 'void';
+
+    // Allowed status values
+    public const VALID_STATUSES = [
+        self::STATUS_DRAFT,
+        self::STATUS_POSTED,
+        self::STATUS_VOID,
+    ];
+
     #[ORM\Column(type: 'string', length: 55, unique: true)]
     #[Validate\NotBlank]
     public string $paymentNumber = '';
@@ -27,10 +41,6 @@ class BillPayment extends AbstractTransactionalEntity
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
     public Vendor $vendor;
-
-    #[ORM\Column(type: 'date')]
-    #[Validate\NotNull]
-    public \DateTimeInterface $paymentDate;
 
     #[ORM\Column(type: 'string', length: 50)]
     #[Validate\NotBlank]
@@ -56,7 +66,8 @@ class BillPayment extends AbstractTransactionalEntity
     public float $discountTaken = 0.0;
 
     #[ORM\Column(type: 'string', length: 50)]
-    public string $status = 'Draft';
+    #[Validate\Choice(choices: self::VALID_STATUSES)]
+    public string $status = self::STATUS_DRAFT;
 
     /**
      * @var Collection<int, BillPaymentApplication>
@@ -67,7 +78,39 @@ class BillPayment extends AbstractTransactionalEntity
     public function __construct()
     {
         parent::__construct();
-        $this->paymentDate = new \DateTime();
         $this->applications = new ArrayCollection();
+    }
+
+    /**
+     * Get the transaction number (payment number).
+     */
+    public function getTransactionNumber(): string
+    {
+        return $this->paymentNumber;
+    }
+
+    /**
+     * Get the transaction type identifier.
+     */
+    public function getTransactionType(): string
+    {
+        return 'bill_payment';
+    }
+
+    /**
+     * Get the payment date (alias for transactionDate).
+     */
+    public function getPaymentDate(): \DateTimeInterface
+    {
+        return $this->transactionDate;
+    }
+
+    /**
+     * Set the payment date (alias for transactionDate).
+     */
+    public function setPaymentDate(\DateTimeInterface $date): self
+    {
+        $this->transactionDate = $date;
+        return $this;
     }
 }

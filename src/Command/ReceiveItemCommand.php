@@ -80,7 +80,7 @@ class ReceiveItemCommand extends Command
 
         foreach ($purchaseOrder->lines as $index => $line) {
             $remaining = $line->quantityOrdered - $line->quantityReceived;
-            
+
             if ($remaining <= 0) {
                 $io->writeln(sprintf('Line %d: Already fully received', $index + 1));
                 continue;
@@ -93,7 +93,7 @@ class ReceiveItemCommand extends Command
                     $remaining
                 )
             );
-            
+
             $quantityInput = $helper->ask($input, $output, $quantityQuestion);
 
             if (empty($quantityInput)) {
@@ -133,9 +133,9 @@ class ReceiveItemCommand extends Command
         // Create ItemReceipt record
         $itemReceipt = new ItemReceipt();
         $itemReceipt->purchaseOrder = $purchaseOrder;
-        $itemReceipt->receiptDate = $receiptDate;
-        $itemReceipt->status = 'received';
-        
+        $itemReceipt->setReceiptDate($receiptDate);
+        $itemReceipt->status = ItemReceipt::STATUS_RECEIVED;
+
         $this->entityManager->persist($itemReceipt);
 
         // Create ItemReceiptLine records
@@ -145,7 +145,7 @@ class ReceiveItemCommand extends Command
             $receiptLine->item = $receiptLineData['line']->item;
             $receiptLine->purchaseOrderLine = $receiptLineData['line'];
             $receiptLine->quantityReceived = $receiptLineData['quantity'];
-            
+
             $itemReceipt->lines->add($receiptLine);
             // Note: No need to persist - cascade persist from ItemReceipt handles this
         }
@@ -167,7 +167,7 @@ class ReceiveItemCommand extends Command
         $this->entityManager->flush();
 
         $io->success('Items received successfully!');
-        
+
         return Command::SUCCESS;
     }
 
@@ -180,7 +180,7 @@ class ReceiveItemCommand extends Command
         if (is_numeric($identifier)) {
             $purchaseOrder = $this->entityManager->getRepository(PurchaseOrder::class)
                 ->findOneBy(['id' => (int)$identifier]);
-            
+
             if ($purchaseOrder) {
                 return $purchaseOrder;
             }

@@ -43,7 +43,7 @@ class PurchaseOrderUpdatedEventHandler
         return [
             'id' => $po->id,
             'orderNumber' => $po->orderNumber,
-            'orderDate' => $po->orderDate->format('Y-m-d H:i:s'),
+            'orderDate' => $po->getOrderDate()->format('Y-m-d H:i:s'),
             'status' => $po->status,
             'reference' => $po->reference,
             'notes' => $po->notes,

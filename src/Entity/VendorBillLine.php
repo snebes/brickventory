@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Ulid;
 use Symfony\Component\Validator\Constraints as Validate;
 
 /**
@@ -13,16 +12,8 @@ use Symfony\Component\Validator\Constraints as Validate;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'vendor_bill_line')]
-class VendorBillLine
+class VendorBillLine extends AbstractTransactionLineEntity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    public int $id;
-
-    #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public private(set) string $uuid = '';
-
     #[ORM\ManyToOne(targetEntity: VendorBill::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(nullable: false)]
     #[Validate\NotNull]
@@ -65,10 +56,6 @@ class VendorBillLine
     #[ORM\Column(type: 'text', nullable: true)]
     public ?string $varianceReason = null;
 
-    public function __construct()
-    {
-        $this->uuid = Ulid::generate();
-    }
 
     /**
      * Calculate line amount

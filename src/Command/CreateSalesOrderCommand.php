@@ -39,14 +39,14 @@ class CreateSalesOrderCommand extends Command
 
         // Ask for sales order reference/customer info
         $io->section('Create Sales Order');
-        
+
         $notesQuestion = new Question('Enter customer notes (optional): ');
         $notes = $helper->ask($input, $output, $notesQuestion);
 
         // Create the sales order with auto-generated order number
         $salesOrder = new SalesOrder();
         $salesOrder->orderNumber = $this->salesOrderRepository->getNextOrderNumber();
-        $salesOrder->orderDate = new \DateTime();
+        $salesOrder->setOrderDate(new \DateTime());
         $salesOrder->status = SalesOrder::STATUS_PENDING_FULFILLMENT;
         $salesOrder->notes = $notes;
 
@@ -69,7 +69,7 @@ class CreateSalesOrderCommand extends Command
 
             // Parse the line input
             $parts = preg_split('/\s+/', trim($lineInput));
-            
+
             if (count($parts) !== 2) {
                 $io->error('Invalid format. Expected: itemId/SKU quantity');
                 continue;
@@ -85,7 +85,7 @@ class CreateSalesOrderCommand extends Command
 
             // Find the item by itemId or elementIds
             $item = $this->findItemByIdentifier($itemIdentifier);
-            
+
             if (!$item) {
                 $io->error("Item with identifier '{$itemIdentifier}' not found");
                 continue;
@@ -104,7 +104,7 @@ class CreateSalesOrderCommand extends Command
             $line->quantityOrdered = $quantityInt;
 
             $salesOrder->lines->add($line);
-            
+
             $io->success("Added: {$item->itemName} (Qty: {$quantity}, Available: {$item->quantityAvailable})");
             $lineNumber++;
         }
@@ -146,7 +146,7 @@ class CreateSalesOrderCommand extends Command
 
         // Next, try to find by itemId
         $item = $this->entityManager->getRepository(Item::class)->findOneBy(['itemId' => $identifier]);
-        
+
         if ($item) {
             return $item;
         }
