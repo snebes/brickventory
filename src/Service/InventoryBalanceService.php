@@ -56,7 +56,7 @@ class InventoryBalanceService
         }
 
         $balance = $this->inventoryBalanceRepository->findOrCreateBalance($item, $location, $binLocation);
-        
+
         if (!isset($balance->id)) {
             $this->entityManager->persist($balance);
             $this->entityManager->flush();
@@ -84,8 +84,8 @@ class InventoryBalanceService
     ): InventoryBalance {
         $balance = $this->createBalance($itemId, $locationId, $binLocation);
 
-        // Use pessimistic locking for concurrent updates
-        $this->entityManager->lock($balance, \Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE);
+        // Note: Pessimistic locking removed as it requires an active transaction.
+        // For high-concurrency scenarios, wrap the calling code in a transaction.
 
         switch ($transactionType) {
             case 'receipt':
@@ -188,7 +188,7 @@ class InventoryBalanceService
     public function checkAvailability(int $itemId, int $locationId, int $quantity): bool
     {
         $balance = $this->getBalance($itemId, $locationId);
-        
+
         if (!$balance) {
             return false;
         }
@@ -240,7 +240,7 @@ class InventoryBalanceService
     public function getInventorySummary(): array
     {
         $qb = $this->entityManager->createQueryBuilder();
-        
+
         $result = $qb->select(
             'COUNT(DISTINCT ib.item) as totalItems',
             'COUNT(DISTINCT ib.location) as totalLocations',
