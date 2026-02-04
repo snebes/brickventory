@@ -154,10 +154,24 @@ class PurchaseOrderController extends AbstractController
                 ], Response::HTTP_BAD_REQUEST);
             }
 
+            // Determine order number - use provided value or auto-generate
+            $orderNumber = !empty($data['orderNumber'])
+                ? trim($data['orderNumber'])
+                : $this->purchaseOrderRepository->getNextOrderNumber();
+
+            // Check for duplicate order number
+            $existingPO = $this->entityManager->getRepository(PurchaseOrder::class)
+                ->findOneBy(['orderNumber' => $orderNumber]);
+            if ($existingPO) {
+                return $this->json([
+                    'error' => "A purchase order with number '{$orderNumber}' already exists. Please use a different order number or leave empty to auto-generate."
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
             $po = new PurchaseOrder();
             $po->vendor = $vendor;
             $po->location = $location;
-            $po->orderNumber = $data['orderNumber'] ?? $this->purchaseOrderRepository->getNextOrderNumber();
+            $po->orderNumber = $orderNumber;
             $po->setOrderDate(new \DateTime($data['orderDate'] ?? 'now'));
             $po->status = $data['status'] ?? PurchaseOrder::STATUS_PENDING_APPROVAL;
             $po->reference = $data['reference'] ?? null;

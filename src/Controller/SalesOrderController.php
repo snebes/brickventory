@@ -92,8 +92,22 @@ class SalesOrderController extends AbstractController
         }
 
         try {
+            // Determine order number - use provided value or auto-generate
+            $orderNumber = !empty($data['orderNumber'])
+                ? trim($data['orderNumber'])
+                : $this->salesOrderRepository->getNextOrderNumber();
+
+            // Check for duplicate order number
+            $existingSO = $this->entityManager->getRepository(SalesOrder::class)
+                ->findOneBy(['orderNumber' => $orderNumber]);
+            if ($existingSO) {
+                return $this->json([
+                    'error' => "A sales order with number '{$orderNumber}' already exists. Please use a different order number or leave empty to auto-generate."
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
             $so = new SalesOrder();
-            $so->orderNumber = $data['orderNumber'] ?? $this->salesOrderRepository->getNextOrderNumber();
+            $so->orderNumber = $orderNumber;
             $so->setOrderDate(new \DateTime($data['orderDate'] ?? 'now'));
             // Use new status constants, default to pending_fulfillment
             $so->status = $data['status'] ?? SalesOrder::STATUS_PENDING_FULFILLMENT;
