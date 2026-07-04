@@ -27,6 +27,13 @@ export default defineNuxtConfig({
         }
     },
 
+    // @ts-ignore
+    routeRules: {
+        ...(process.env.API_ENDPOINT && {
+            '/api/**': { proxy: `${process.env.API_ENDPOINT}/api/**` },
+        }),
+    },
+
     vite: {
         optimizeDeps: {
             include: [
