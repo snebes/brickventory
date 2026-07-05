@@ -6,6 +6,7 @@ namespace App\MessageHandler\BrickLink;
 
 use App\Entity\BrickLink\BrickLinkColor;
 use App\Entity\BrickLink\BrickLinkColorCode;
+use App\Entity\BrickLink\BrickLinkPart;
 use App\Message\BrickLink\AddBrickLinkColorCodesMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Dom\Element;
@@ -27,6 +28,7 @@ use function sprintf;
 class AddBrickLinkColorCodesMessageHandler extends AbstractBrickLinkMessageHandler
 {
     private array $colors = [];
+    private array $parts = [];
 
     public function __construct(
         private readonly EntityManagerInterface $em
@@ -35,42 +37,69 @@ class AddBrickLinkColorCodesMessageHandler extends AbstractBrickLinkMessageHandl
 
     public function __invoke(AddBrickLinkColorCodesMessage $message): void
     {
-        $repo = $this->em->getRepository(BrickLinkColorCode::class);
+        $codeRepo = $this->em->getRepository(BrickLinkColorCode::class);
+        $partRepo = $this->em->getRepository(BrickLinkPart::class);
+
         $document = XMLDocument::createFromFile($message->xmlFile);
         $items = $document->getElementsByTagName('ITEM');
 
         $matrix = [];
         foreach ($items as $code) {
-            $part = sprintf('%s-%s', $this->getTextContent($code, 'ITEMID'), $this->getColor($code));
-            if (!isset($matrix[$part])) {
-                $matrix[$part] = [];
+            $itemId = $this->getTextContent($code, 'ITEMID');
+            $color = $this->getTextContent($code, 'COLOR');
+
+            $key = sprintf('%s-%s', $itemId, $color);
+            if (!isset($matrix[$key])) {
+                $matrix[$key] = [
+                    'partId'     => $itemId,
+                    'colorName'  => $color,
+                    'elementIds' => [],
+                ];
             }
-            $matrix[$part][] = $this->getTextContent($code, 'CODENAME');
+            $matrix[$key]['elementIds'][] = $this->getTextContent($code, 'CODENAME');
         }
 
-        foreach ($matrix as $part => $elementIds) {
-            $entity = $repo->findOneBy(['part' => $part]);
+        foreach ($matrix as $data) {
+            $part = $this->getPart($data['partId']);
+            $color = $this->getColor($data['colorName']);
+            $itemId = sprintf('%s-%02d', $part->part, $color->id);
+
+            $entity = $codeRepo->findOneBy(['itemId' => $itemId]);
             if (!$entity) {
                 $entity = new BrickLinkColorCode();
-                $entity->part = $part;
+                $entity->itemId = $itemId;
                 $this->em->persist($entity);
             }
 
-            $entity->elementIds = $elementIds;
+            $entity->part = $part;
+            $entity->color = $color;
+            $entity->elementIds = $data['elementIds'];
         }
 
         $this->em->flush();
     }
 
-    public function getColor(Element $element): string
+    protected function getPart(string $partId): BrickLinkPart
+    {
+        if (empty($this->parts)) {
+            $parts = $this->em->getRepository(BrickLinkPart::class)->findAll();
+            foreach ($parts as $part) {
+                $this->parts[$part->part] = $part;
+            }
+        }
+
+        return $this->parts[$partId];
+    }
+
+    protected function getColor(string $colorName): BrickLinkColor
     {
         if (empty($this->colors)) {
             $colors = $this->em->getRepository(BrickLinkColor::class)->findAll();
             foreach ($colors as $color) {
-                $this->colors[$color->name] = sprintf('%02d', $color->id);
+                $this->colors[$color->name] = $color;
             }
         }
 
-        return $this->colors[$this->getTextContent($element, 'COLOR')];
+        return $this->colors[$colorName];
     }
 }
