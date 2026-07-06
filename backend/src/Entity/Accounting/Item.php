@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity\Accounting;
 
+use App\Entity\Domain\RecordsDomainEvents;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -12,6 +13,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'accounting_item')]
 class Item
 {
+    use RecordsDomainEvents;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     public Uuid $id;
