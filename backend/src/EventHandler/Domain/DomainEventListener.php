@@ -40,9 +40,10 @@ class DomainEventListener
                 $event->aggregateType = $this->resolveType($entity);
                 $event->event = $data['type'];
                 $event->payload = $data['payload'];
-                // $event->version
+                $event->version = $data['version'];
 
                 $em->persist($event);
+                $uow->computeChangeSet($em->getClassMetadata(DomainEvent::class), $event);
                 $this->collectedEvents[] = $event;
             }
         }

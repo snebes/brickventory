@@ -2,24 +2,18 @@
 
 declare(strict_types=1);
 
-namespace App\EventSubscriber;
+namespace App\EventHandler;
 
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\HttpKernel\Event\ResponseEvent;
-use Symfony\Component\HttpKernel\Event\RequestEvent;
-use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Symfony\Component\HttpKernel\KernelEvents;
 
-class CorsSubscriber implements EventSubscriberInterface
+#[AsEventListener(event: KernelEvents::REQUEST, method: 'onKernelRequest', priority: 9999)]
+#[AsEventListener(event: KernelEvents::RESPONSE, method: 'onKernelResponse', priority: 9999)]
+class CorsListener
 {
-    public static function getSubscribedEvents(): array
-    {
-        return [
-            KernelEvents::REQUEST => ['onKernelRequest', 9999],
-            KernelEvents::RESPONSE => ['onKernelResponse', 9999],
-        ];
-    }
-
     public function onKernelRequest(RequestEvent $event): void
     {
         // Don't do anything if it's not the main request
@@ -28,7 +22,7 @@ class CorsSubscriber implements EventSubscriberInterface
         }
 
         $request = $event->getRequest();
-        
+
         // Handle preflight OPTIONS request
         if ($request->getMethod() === 'OPTIONS') {
             $response = new Response();
@@ -48,7 +42,7 @@ class CorsSubscriber implements EventSubscriberInterface
         }
 
         $response = $event->getResponse();
-        
+
         // Add CORS headers to all responses
         $response->headers->set('Access-Control-Allow-Origin', '*');
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
