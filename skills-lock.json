@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": {
+    "event-sourcing-architect": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/event-sourcing-architect/SKILL.md",
+      "computedHash": "be40176759a924ee7daf15f3adb17a0e18694a85cc38807ce074ff52ca836acb"
+    },
+    "php-pro": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/php-pro/SKILL.md",
+      "computedHash": "c163f6d5d26ddbf4a4d79e8dc95d3b41e447f1659486cf0aae8c070d950a9d86"
+    },
+    "symfony:brainstorming": {
+      "source": "makfly/superpowers-symfony",
+      "sourceType": "github",
+      "skillPath": "skills/brainstorming/SKILL.md",
+      "computedHash": "33d085759b6c70252df183c9589e86d1819807b371d3cbc08a7629469dc5b024"
+    },
+    "symfony:doctrine-migrations": {
+      "source": "makfly/superpowers-symfony",
+      "sourceType": "github",
+      "skillPath": "skills/doctrine-migrations/SKILL.md",
+      "computedHash": "f567cc35a98fe8ac6e6632d4da5990f974d4028c9517672586c42a3528861425"
+    },
+    "symfony:doctrine-relations": {
+      "source": "makfly/superpowers-symfony",
+      "sourceType": "github",
+      "skillPath": "skills/doctrine-relations/SKILL.md",
+      "computedHash": "cecba41492de5efed7b2b0d53c3d198c79c063d5232e18e3ce7b6342cecac69d"
+    },
+    "symfony:functional-tests": {
+      "source": "makfly/superpowers-symfony",
+      "sourceType": "github",
+      "skillPath": "skills/functional-tests/SKILL.md",
+      "computedHash": "fe487c7a86acc172e4d2d9130d04f7377f3950ce654d095f64a25829b9811435"
+    },
+    "symfony:ports-and-adapters": {
+      "source": "makfly/superpowers-symfony",
+      "sourceType": "github",
+      "skillPath": "skills/ports-and-adapters/SKILL.md",
+      "computedHash": "e426df4395f29814ab6e89b703cd961c303958c4a832a575550e563d1cf8300c"
+    },
+    "symfony:symfony-messenger": {
+      "source": "makfly/superpowers-symfony",
+      "sourceType": "github",
+      "skillPath": "skills/symfony-messenger/SKILL.md",
+      "computedHash": "4f7d3772433a2a03d570a3957d0a84f7f3d86782b273c14a8a75dae3aceb1e4d"
+    }
+  }
+}
