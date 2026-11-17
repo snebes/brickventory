@@ -1,0 +1,15 @@
+security:
+    providers:
+        inventory_api:
+            memory:
+                users:
+                    inventory-api: { roles: [ROLE_INVENTORY_API] }
+    firewalls:
+        inventory_api:
+            pattern: ^/api/v1(?:/|$)
+            stateless: true
+            provider: inventory_api
+            access_token:
+                token_handler: App\Security\InventoryTokenHandler
+    access_control:
+        - { path: '^/api/v1(?:/|$)', roles: ROLE_INVENTORY_API }

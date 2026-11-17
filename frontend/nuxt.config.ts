@@ -2,6 +2,9 @@
 import { defineNuxtConfig } from "nuxt/config";
 
 export default defineNuxtConfig({
+    srcDir: '.',
+    css: ['~/assets/css/inventory.css'],
+    runtimeConfig: { apiBase: 'http://localhost:8000', sessionPassword: '' },
     compatibilityDate: '2025-07-15',
     devtools: { enabled: true },
 
@@ -18,20 +21,13 @@ export default defineNuxtConfig({
     // App configuration
     app: {
         head: {
-            title: 'Brickventory - Order Management',
+            title: 'Brickventory',
             meta: [
                 { charset: 'utf-8' },
                 { name: 'viewport', content: 'width=device-width, initial-scale=1' },
                 { name: 'description', content: 'Brickventory order management system' }
             ]
         }
-    },
-
-    // @ts-ignore
-    routeRules: {
-        ...(process.env.API_ENDPOINT && {
-            '/api/**': { proxy: `${process.env.API_ENDPOINT}/api/**` },
-        }),
     },
 
     vite: {

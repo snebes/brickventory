@@ -1,87 +1,96 @@
-# Brickventory Frontend (Nuxt 3)
+# Brickventory frontend
 
-This is the frontend application for Brickventory, built with Nuxt 3.
+Nuxt 4 / Vue 3 frontend for the scoped Symfony inventory API. Inventoros's workspace,
+list, form, detail and workflow patterns are adapted to Nuxt pages and Vue components.
+Upstream source: Inventoros commit `acd8b1fc51f3c92de73e048836fc571a0d5691be`.
+Attribution and AGPL-3.0-only license are retained in [docs/upstream](docs/upstream).
 
-## Requirements
+## Run
 
-- **Node.js**: Version 22.x or 24.x (LTS recommended)
-- **Yarn**: Version 1.22+ or higher (preferred package manager)
+Use Node 22 or 24 and the project's Yarn 4.17.0 (npm is also supported by its lockfile).
+Install dependencies, copy `.env.example` to `.env`, and set:
 
-## Quick Start
+```dotenv
+NUXT_API_BASE=http://localhost:8000
+NUXT_SESSION_PASSWORD=<at least 32 random characters>
+```
 
-```bash
-# Install dependencies
-yarn install
+Generate a session password with `openssl rand -hex 32`. Start Symfony using its normal
+project setup, apply the inventory migrations, and configure `INVENTORY_API_TOKEN`
+in the backend. Start this frontend with `yarn dev` / `npm run dev`. The development command enables
+Node’s system CA store for locally trusted HTTPS sites (Node 22.19+ or 24+), including
+Nuxt’s child workers. Restart the command after changing environment variables. TLS
+verification remains enabled; do not set `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 
-# Start development server
-yarn dev
-# Opens at http://localhost:3000
+Open `/login` and enter the backend's inventory access token. The frontend never
+places that token in public runtime configuration, rendered HTML, or browser storage.
+H3 seals it in an encrypted, HTTP-only, same-site session cookie lasting eight hours;
+Nitro attaches it to server-side requests to Symfony. Sign-out clears the cookie.
+Production deployments require HTTPS. All people using the shared token have the same
+API privileges; this does not introduce individual user accounts or approval roles.
 
-# Build for production
+Nuxt uses the existing root `pages/`, `components/`, and `composables/` directories via
+`srcDir: '.'`. `app.vue` provides the responsive sidebar and page outlet. Nitro's
+`/api/inventory/**` route streams JSON, multipart files, CSV and PDFs to/from the
+private Symfony origin. It rejects unauthenticated and cross-site mutation requests;
+the former unrestricted `/api/**` route-rule proxy has been removed.
+
+## Screens and workflows
+
+- Overview with actual API counts, recent orders and low-stock products.
+- Products, variants/options, categories, warehouses, locations, barcode lookup,
+  CSV import/export, images/documents, batch/serial balances and movement history.
+- Orders with line pricing, taxes/discounts, open-order editing, approvals, partial
+  manual shipments, tracking details, payments/refunds, returns, PDFs and email.
+- Customers with full contact/address details and order history.
+- Suppliers with contact/terms/rating and purchase-price history.
+- Purchase orders with draft editing, approvals, email sending and partial receipts
+  into a chosen location using the backend's document line IDs.
+- Stock transfers with source/destination selection, preparation/reservation,
+  shipping, completion and cancellation.
+- Signed stock adjustments, physical count reconciliation and approved return requests.
+
+Lists provide search, relevant status/active/low-stock filters, sorting, date ranges,
+pagination, loading/error/retry and empty states. Record selectors search and paginate
+on the server. Document actions use confirmation dialogs and display backend validation
+errors without dropping the user's input. Stock and financial values remain authoritative
+on the backend; decimal strings are preserved in request payloads.
+
+Old `/items`, `/sales-orders`, `/inventory-adjustments`, `/inventory-balances`, and
+`/item-receipts` links redirect to the new screens. Retired forms for the previous API
+were replaced by the inventory components. The separate legacy `assets/vue/` bundle
+and unrelated reports code are not part of this Nuxt port.
+
+## Structure
+
+- `shared/inventory.ts`: resource types, field definitions and navigation.
+- `components/inventory/`: list/editor/detail components, line/option selectors,
+  workflow dialogs, attachments and reference labels.
+- `composables/useInventoryApi.ts`: request client for the authenticated Nitro proxy.
+- `utils/inventory.ts`: explicit form-to-Symfony payload conversion and action rules.
+- `server/api/session/`, `server/utils/inventorySession.ts`: shared-token sessions.
+- `server/api/inventory/[...path].ts`: authenticated server-side proxy.
+- `assets/css/design-tokens.css`: original Inventoros design tokens.
+- `assets/css/inventory.css`: adapted responsive interface styles without a second UI framework.
+
+## Verification
+
+```sh
+yarn typecheck
+yarn test
 yarn build
-
-# Preview production build
-yarn preview
+# One-time browser installation:
+yarn playwright install chromium
+yarn test:e2e
 ```
 
-## Features
+The browser suite starts the production Nuxt build and an isolated API fixture on
+ports 4317/4318. It verifies browser/session/proxy behavior, product and contact forms,
+order shipments/payments, partial receipts, transfers, counts, returns and mobile
+navigation. It never uses your application database or sends live emails. Unit tests
+verify the Symfony payload contracts, especially money, quantities and traceability.
+The backend's independent functional suite remains the authority for stock transactions.
 
-- **Purchase Orders Management**: Create, edit, delete, and list purchase orders
-- **Sales Orders Management**: Create, edit, delete, and list sales orders
-- **Real-time Data**: Connects to Symfony backend API
-- **Responsive Design**: Works on desktop and mobile devices
-- **TypeScript**: Full type safety throughout the application
-
-## Configuration
-
-The application connects to the Symfony backend API. Configure the API base URL:
-
-### Development
-Defaults to `http://localhost:8000` (auto-configured)
-
-### Production
-Set the `NUXT_PUBLIC_API_BASE` environment variable:
-
-```env
-NUXT_PUBLIC_API_BASE=https://api.yourdomain.com
-```
-
-## Project Structure
-
-```
-.
-├── app.vue                 # Main layout with sidebar
-├── nuxt.config.ts          # Nuxt configuration
-├── pages/                  # Auto-routed pages
-│   ├── index.vue          # Purchase orders
-│   └── sales-orders.vue   # Sales orders
-├── components/            # Vue components
-│   ├── purchase-orders/
-│   └── sales-orders/
-└── composables/           # Reusable composables
-    └── useApi.ts          # API client
-```
-
-## Available Scripts
-
-- `yarn dev` - Start development server with HMR
-- `yarn build` - Build for production
-- `yarn generate` - Generate static site
-- `yarn preview` - Preview production build locally
-- `yarn postinstall` - Generate TypeScript types (runs automatically)
-
-## API Integration
-
-The frontend communicates with the Symfony backend through REST API endpoints. See [../NUXT3_SETUP.md](../NUXT3_SETUP.md) for full API documentation.
-
-## Dependencies
-
-- **Nuxt 3**: The Intuitive Vue Framework
-- **Vue 3**: Progressive JavaScript Framework
-- **Vue Router**: Official router for Vue.js
-
-## Learn More
-
-- [Nuxt 3 Documentation](https://nuxt.com/docs)
-- [Vue 3 Documentation](https://vuejs.org/guide/introduction.html)
-- [Main Project README](../NUXT3_SETUP.md)
+This is a Nuxt adaptation of the scoped workflows, not the entire Laravel/Inertia
+application. Carrier integrations, portals, organization/user administration,
+manufacturing, plugins, GraphQL and reporting remain outside the original port scope.

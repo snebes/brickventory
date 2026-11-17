@@ -8,11 +8,11 @@
  */
 export function parseApiDateForInput(dateString: string | undefined | null): string {
   if (!dateString) {
-    return new Date().toISOString().split('T')[0]
+    return new Date().toISOString().slice(0, 10)
   }
   
   // Extract just the date part (before the space)
-  const datePart = dateString.split(' ')[0]
+  const datePart = dateString.slice(0, 10)
   
   // Validate format (should be YYYY-MM-DD)
   if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
@@ -20,5 +20,5 @@ export function parseApiDateForInput(dateString: string | undefined | null): str
   }
   
   // Fallback to today's date if parsing fails
-  return new Date().toISOString().split('T')[0]
+  return new Date().toISOString().slice(0, 10)
 }
