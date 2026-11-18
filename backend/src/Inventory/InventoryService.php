@@ -34,6 +34,9 @@ final class InventoryService
 
     private function transaction(callable $work): mixed
     {
+        if (!$this->em->isOpen()) {
+            $this->em = $this->registry->getManager();
+        }
         $nested = $this->em->getConnection()->isTransactionActive();
         for ($attempt = 1;; ++$attempt) {
             try {
@@ -62,7 +65,7 @@ final class InventoryService
                 if ($values === [null]) {
                     continue;
                 }
-                if (count($values) !== count($header) || count($rows) >= 500) {
+                if (count($values) !== count($header) || count($rows) >= 250000) {
                     $this->invalid('Invalid CSV row or more than 500 rows.');
                 }
                 $row = array_combine($header, $values);
@@ -97,6 +100,7 @@ final class InventoryService
     {
         $criteria = $this->criteria($resource);
         $class = self::RESOURCES[$resource];
+        $scopedLowStock = Product::class === $class && isset($filters['warehouse_id']) && filter_var($filters['low_stock'] ?? false, FILTER_VALIDATE_BOOLEAN);
         if (null !== $status && Document::class === $class) {
             $criteria['status'] = $status;
         }
@@ -128,10 +132,13 @@ final class InventoryService
             }
         }
         if (Product::class === $class) {
-            if (isset($filters['low_stock']) && filter_var($filters['low_stock'], FILTER_VALIDATE_BOOLEAN)) {
+            if (!$scopedLowStock && isset($filters['low_stock']) && filter_var($filters['low_stock'], FILTER_VALIDATE_BOOLEAN)) {
                 $qb->andWhere('(SELECT COALESCE(SUM(lb.quantity), 0) FROM App\\Entity\\Inventory\\Balance lb JOIN lb.product lp WHERE lp = r OR IDENTITY(lp.parent) = r.id) <= r.minStock');
             }
-            if (isset($filters['location_id']) || isset($filters['warehouse_id'])) {
+            if (isset($filters['warehouse_id'])) {
+                $this->get('warehouses', (int) $filters['warehouse_id']);
+            }
+            if (isset($filters['location_id'])) {
                 $sub = 'EXISTS (SELECT fb.id FROM App\\Entity\\Inventory\\Balance fb JOIN fb.location fl JOIN fb.product fp WHERE (fp = r OR IDENTITY(fp.parent) = r.id)';
                 if (isset($filters['location_id'])) {
                     $sub .= ' AND fl.id = :locationFilter';
@@ -146,6 +153,9 @@ final class InventoryService
         }
         if (Location::class === $class && isset($filters['warehouse_id'])) {
             $qb->andWhere('IDENTITY(r.warehouse) = :warehouseFilter')->setParameter('warehouseFilter', (int) $filters['warehouse_id']);
+        }
+        if (in_array($class, [Balance::class, Movement::class, TraceBalance::class], true) && isset($filters['warehouse_id'])) {
+            $qb->join('r.location', 'warehouseLocation')->andWhere('IDENTITY(warehouseLocation.warehouse) = :stockWarehouse')->setParameter('stockWarehouse', (int) $filters['warehouse_id']);
         }
         if (in_array($class, [Balance::class, Movement::class, TraceBalance::class], true) && isset($filters['location_id'])) {
             $qb->andWhere('IDENTITY(r.location) = :locationFilter')->setParameter('locationFilter', (int) $filters['location_id']);
@@ -188,9 +198,35 @@ final class InventoryService
         if ('id' !== $sort) {
             $qb->addOrderBy('r.id', $direction);
         }
-        $records = $qb->setMaxResults($limit)->setFirstResult(($page - 1) * $limit)->getQuery()->getResult();
+        if (!$scopedLowStock) {
+            $qb->setMaxResults($limit)->setFirstResult(($page - 1) * $limit);
+        }
+        $records = $qb->getQuery()->getResult();
 
-        return ['data' => array_map($this->view(...), $records), 'meta' => ['current_page' => $page, 'per_page' => $limit, 'total' => $total]];
+        $views = array_map($this->view(...), $records);
+        if (Product::class === $class && isset($filters['warehouse_id'])) {
+            foreach ($records as $index => $product) {
+                $balances = $this->em->createQuery('SELECT wb FROM App\\Entity\\Inventory\\Balance wb JOIN wb.location wl JOIN wb.product wp WHERE (wp = :product OR IDENTITY(wp.parent) = :id) AND IDENTITY(wl.warehouse) = :warehouse')->setParameter('product', $product)->setParameter('id', $product->id)->setParameter('warehouse', (int) $filters['warehouse_id'])->getResult();
+                $stock = $reserved = 0;
+                foreach ($balances as $balance) {
+                    $stock += $balance->quantity;
+                    $reserved += $this->ledger->reserved($balance->product, $balance->location);
+                }
+                $views[$index]['stock'] = $stock;
+                $views[$index]['reserved_quantity'] = $reserved;
+                $views[$index]['available_quantity'] = $stock - $reserved;
+                $views[$index]['warehouse_id'] = (int) $filters['warehouse_id'];
+                $views[$index]['warehouse_levels'] = $product->details['warehouse_levels'][(string) $filters['warehouse_id']] ?? [];
+            }
+        }
+
+        if ($scopedLowStock) {
+            $views = array_values(array_filter($views, static fn ($v) => $v['available_quantity'] <= ($v['warehouse_levels']['reorder_point'] ?? $v['warehouse_levels']['min_stock'] ?? $v['details']['reorder_point'] ?? $v['min_stock'])));
+            $total = count($views);
+            $views = array_slice($views, ($page - 1) * $limit, $limit);
+        }
+
+        return ['data' => $views, 'meta' => ['current_page' => $page, 'per_page' => $limit, 'total' => $total]];
     }
 
     public function barcode(string $barcode): array
@@ -202,7 +238,7 @@ final class InventoryService
 
     public function importProducts(array $rows): array
     {
-        if (!$rows || !array_is_list($rows) || count($rows) > 500) {
+        if (!$rows || !array_is_list($rows) || count($rows) > 255000) {
             $this->invalid('Import requires between 1 and 500 rows.');
         }
 
@@ -573,6 +609,13 @@ final class InventoryService
                 if ('cancel' === $action) {
                     $doc->status = 'cancelled';
                 } elseif ('complete' === $action) {
+                    if (!empty($doc->details['count_required']) || !empty($doc->details['count_history'])) {
+                        foreach ($doc->items as $line) {
+                            if (empty($doc->details['count_reviews'][(string) $line['id']]) || $doc->details['count_reviews'][(string) $line['id']] !== hash('sha256', json_encode($line, JSON_THROW_ON_ERROR))) {
+                                $this->invalid('Every count line must be counted and reviewed before completion.');
+                            }
+                        }
+                    }
                     $location = $this->get('locations', $doc->details['location_id']);
                     // Validate every snapshot before the first reconciliation changes stock.
                     foreach ($doc->items as $line) {
@@ -863,6 +906,7 @@ final class InventoryService
             $this->invalid('Shipment lines are required.');
         }
         $seen = [];
+        $resolvedShipments = [];
         foreach ($shipments as $shipment) {
             if (!is_array($shipment)) {
                 $this->invalid('Invalid shipment line.');
@@ -885,12 +929,14 @@ final class InventoryService
                     $this->invalid('Shipment serials must identify unshipped order units.');
                 }
                 $line['shipped_serials'] = [...($line['shipped_serials'] ?? []), ...$serials];
+                $shipment['serials'] = $serials;
             }
             $line['shipped_quantity'] = ($line['shipped_quantity'] ?? 0) + $quantity;
+            $resolvedShipments[] = $shipment;
             unset($line);
         }
         $doc->items = $items;
-        $doc->details['shipments'][] = ['items' => $shipments, 'tracking_number' => $data['tracking_number'] ?? '', 'carrier' => $data['carrier'] ?? '', 'created_at' => (new \DateTimeImmutable())->format(DATE_ATOM)];
+        $doc->details['shipments'][] = ['items' => $resolvedShipments, 'tracking_number' => $data['tracking_number'] ?? '', 'carrier' => $data['carrier'] ?? '', 'created_at' => (new \DateTimeImmutable())->format(DATE_ATOM)];
         $doc->status = array_filter($items, static fn ($line) => $line['quantity'] !== ($line['shipped_quantity'] ?? 0)) ? 'processing' : 'shipped';
     }
 
@@ -1033,7 +1079,7 @@ final class InventoryService
 
     private function editMaster(object $record, array $data): void
     {
-        $allowed = $record instanceof Product ? ['name', 'sku', 'description', 'price', 'cost', 'is_active', 'category_id', 'barcode', 'min_stock', 'options', 'attributes', 'unit', 'metadata', 'tracking'] : ($record instanceof Location ? ['name', 'code', 'warehouse_id', 'parent_id', 'aisle', 'shelf', 'bin'] : (($record instanceof Category || $record instanceof Warehouse) ? ($record instanceof Category ? ['name', 'parent_id', 'description', 'notes', 'metadata'] : ['name', 'address', 'city', 'state', 'zip_code', 'country', 'phone', 'email', 'notes', 'metadata']) : ['name', 'email', 'phone', 'company_name', 'contact_name', 'billing_address', 'shipping_address', 'address', 'city', 'country', 'tax_id', 'payment_terms', 'currency', 'notes', 'is_active', 'code', 'state', 'zip_code', 'website', 'rating', 'metadata', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'shipping_city', 'shipping_state', 'shipping_zip_code', 'shipping_country', 'credit_limit']));
+        $allowed = $record instanceof Product ? ['name', 'sku', 'description', 'price', 'cost', 'is_active', 'category_id', 'barcode', 'min_stock', 'options', 'attributes', 'unit', 'metadata', 'tracking', 'reorder_point', 'reorder_quantity', 'max_stock'] : ($record instanceof Location ? ['name', 'code', 'warehouse_id', 'parent_id', 'aisle', 'shelf', 'bin'] : (($record instanceof Category || $record instanceof Warehouse) ? ($record instanceof Category ? ['name', 'parent_id', 'description', 'notes', 'metadata'] : ['name', 'address', 'city', 'state', 'zip_code', 'country', 'phone', 'email', 'notes', 'metadata']) : ['name', 'email', 'phone', 'company_name', 'contact_name', 'billing_address', 'shipping_address', 'address', 'city', 'country', 'tax_id', 'payment_terms', 'currency', 'notes', 'is_active', 'code', 'state', 'zip_code', 'website', 'rating', 'metadata', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'shipping_city', 'shipping_state', 'shipping_zip_code', 'shipping_country', 'credit_limit']));
         if (array_diff(array_keys($data), $allowed)) {
             $this->invalid('Unsupported fields: '.implode(', ', array_diff(array_keys($data), $allowed)));
         }
@@ -1060,6 +1106,12 @@ final class InventoryService
                 }
                 $property = substr($field, 0, -3);
                 $record->$property = $target;
+            } elseif (in_array($field, ['reorder_point', 'reorder_quantity', 'max_stock'], true)) {
+                $value = $this->integer($data, $field);
+                if ($value < 0) {
+                    $this->invalid($field.' cannot be negative.');
+                }
+                $record->details[$field] = $value;
             } elseif ('min_stock' === $field) {
                 $value = $this->integer($data, $field);
                 if ($value < 0) {
@@ -1085,7 +1137,7 @@ final class InventoryService
                 if (!in_array($value, ['none', 'batch', 'serial'], true)) {
                     $this->invalid('Invalid tracking mode.');
                 }
-                if (($record->details['tracking'] ?? 'none') !== $value && $this->em->createQuery('SELECT COUNT(m.id) FROM App\\Entity\\Inventory\\Movement m JOIN m.product p WHERE p = :product OR IDENTITY(p.parent) = :productId')->setParameter('product', $record)->setParameter('productId', $record->id)->getSingleScalarResult()) {
+                if ($record->id && ($record->details['tracking'] ?? 'none') !== $value && $this->em->createQuery('SELECT COUNT(m.id) FROM App\\Entity\\Inventory\\Movement m JOIN m.product p WHERE p = :product OR IDENTITY(p.parent) = :productId')->setParameter('product', $record)->setParameter('productId', $record->id)->getSingleScalarResult()) {
                     $this->invalid('Tracking cannot change after stock movements.');
                 }
                 $record->details[$field] = $value;
@@ -1113,6 +1165,9 @@ final class InventoryService
                     $this->invalid('Invalid '.$field.'.');
                 } $record->details[$field] = $value;
             }
+        }
+        if ($record instanceof Product && isset($record->details['max_stock']) && $record->details['max_stock'] < ($record->details['reorder_point'] ?? $record->minStock)) {
+            $this->invalid('max_stock must be at least the reorder point.');
         }
         if (property_exists($record, 'details')) {
             $this->validateDetails($record->details);

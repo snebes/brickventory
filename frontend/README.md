@@ -37,13 +37,19 @@ the former unrestricted `/api/**` route-rule proxy has been removed.
 
 ## Screens and workflows
 
-- Overview with actual API counts, recent orders and low-stock products.
+- Dashboard with authenticated backend aggregates, inventory value, monthly revenue,
+  receivables/dead stock, replenishment review, category/movement summaries, recent records,
+  prefilled reorder drafts, and per-browser widget controls. Optional backend
+  `INVENTORY_CURRENCY` configures the base currency (USD by default).
 - Products, variants/options, categories, warehouses, locations, barcode lookup,
   CSV import/export, images/documents, batch/serial balances and movement history.
 - Orders with line pricing, taxes/discounts, open-order editing, approvals, partial
   manual shipments, tracking details, payments/refunds, returns, PDFs and email.
 - Customers with full contact/address details and order history.
-- Suppliers with contact/terms/rating and purchase-price history.
+- Suppliers with contact/terms/rating, purchase-price history and linked product catalogs.
+- Product/variant supplier terms and primary selection, reorder settings, and a
+  replenishment review screen that accounts for incoming/reserved stock and creates
+  grouped draft purchase orders with stale-review and duplicate-request protection.
 - Purchase orders with draft editing, approvals, email sending and partial receipts
   into a chosen location using the backend's document line IDs.
 - Stock transfers with source/destination selection, preparation/reservation,
@@ -94,3 +100,9 @@ The backend's independent functional suite remains the authority for stock trans
 This is a Nuxt adaptation of the scoped workflows, not the entire Laravel/Inertia
 application. Carrier integrations, portals, organization/user administration,
 manufacturing, plugins, GraphQL and reporting remain outside the original port scope.
+
+Product lists now support reviewed bulk actions and selected export. Product details
+include duplication, warehouse levels and serial management. Recurring schedules live
+at `/cycle-counts`; manual shipments and packing slips live at `/shipments`. Schedule
+`php bin/console inventory:run-cycle-counts --env=prod` hourly from `backend/` to run due
+counts automatically. See the port documentation for stock and review semantics.

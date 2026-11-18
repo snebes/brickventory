@@ -118,6 +118,9 @@ final readonly class Payload
         public ?int $order_id = null,
         public ?string $shipping_method = null,
         public ?string $estimated_arrival = null,
+        public ?int $reorder_point = null,
+        public ?int $reorder_quantity = null,
+        public ?int $max_stock = null,
     ) {
     }
 

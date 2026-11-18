@@ -29,7 +29,7 @@ final class InventoryController extends AbstractController
     }
 
     #[Route('/products/import-csv', methods: ['POST'], priority: 10)]
-    public function importCsv(#[\Symfony\Component\HttpKernel\Attribute\MapUploadedFile(constraints: new \Symfony\Component\Validator\Constraints\File(maxSize: '5M', mimeTypes: ['text/plain', 'text/csv', 'application/csv']))] \Symfony\Component\HttpFoundation\File\UploadedFile $file): JsonResponse
+    public function importCsv(#[\Symfony\Component\HttpKernel\Attribute\MapUploadedFile(constraints: new \Symfony\Component\Validator\Constraints\File(maxSize: '15M', mimeTypes: ['text/plain', 'text/csv', 'application/csv']))] \Symfony\Component\HttpFoundation\File\UploadedFile $file): JsonResponse
     {
         return $this->json(['data' => $this->inventory->importCsv($file)]);
     }

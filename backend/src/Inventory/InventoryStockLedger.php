@@ -11,6 +11,7 @@ use App\Entity\Inventory\Document;
 use App\Entity\Inventory\Location;
 use App\Entity\Inventory\Movement;
 use App\Entity\Inventory\Product;
+use App\Entity\Inventory\ProductSerial;
 use App\Entity\Inventory\TraceBalance;
 use Doctrine\DBAL\LockMode;
 use Doctrine\Persistence\ManagerRegistry;
@@ -79,7 +80,7 @@ final readonly class InventoryStockLedger
         if ($before + $quantity > 2147483647) {
             $this->invalid('Stock exceeds the supported quantity.');
         }
-        $this->trace($product, $location, $quantity, $trace, $reference, false, in_array($type, ['sale', 'transfer_out'], true));
+        $this->trace($product, $location, $quantity, $trace + ['_movement_type' => $type], $reference, false, in_array($type, ['sale', 'transfer_out'], true));
         $balance->quantity += $quantity;
         $movement = new Movement();
         $movement->product = $product;
@@ -141,6 +142,13 @@ final readonly class InventoryStockLedger
                 $this->invalid('Invalid serial identifier.');
             }
             $delta = 'serial' === $mode ? ($quantity > 0 ? 1 : -1) : $quantity;
+            $registration = '' !== $serial ? $this->currentQuery(ProductSerial::class, ['product' => $product, 'serialNumber' => $serial])->setHint(\Doctrine\ORM\Query::HINT_REFRESH, true)->getOneOrNullResult() : null;
+            if ($delta > 0 && $registration && 'sold' === $registration->status && (!in_array($data['_movement_type'] ?? '', ['return', 'order_edit_return'], true) || '' === $exclude)) {
+                $this->invalid('Sold serials must be returned through their order.');
+            }
+            if ($delta < 0 && $registration && in_array($registration->status, ['reserved', 'damaged'], true)) {
+                $this->invalid('Serial is reserved or damaged.');
+            }
             $repo = $this->registry->getManager()->getRepository(TraceBalance::class);
             if ('' !== $serial && $delta > 0 && count($this->currentQuery(TraceBalance::class, ['product' => $product, 'serial' => $serial, 'quantity' => 1])->getArrayResult())) {
                 $this->invalid('Serial is already in stock.');
@@ -186,6 +194,15 @@ final readonly class InventoryStockLedger
             if ($validateOnly) {
                 continue;
             }
+            if ('' !== $serial) {
+                if (!$registration) {
+                    $registration = new ProductSerial();
+                    $registration->product = $product;
+                    $registration->serialNumber = $serial;
+                    $this->registry->getManager()->persist($registration);
+                }
+                $registration->status = $delta > 0 ? 'available' : ('transfer_out' === ($data['_movement_type'] ?? '') ? 'in_transit' : ('sale' === ($data['_movement_type'] ?? '') ? 'sold' : 'unavailable'));
+            }
             $trace->quantity += $delta;
             $this->registry->getManager()->flush();
         }
@@ -202,6 +219,16 @@ final readonly class InventoryStockLedger
                 if (($line['product_variant_id'] ?? $line['product_id']) === $product->id) {
                     $quantity += $line['quantity'];
                 }
+            }
+        }
+
+        foreach ($this->currentQuery(TraceBalance::class, ['product' => $product, 'location' => $location, 'quantity' => 1])->setHint(\Doctrine\ORM\Query::HINT_REFRESH, true)->getResult() as $trace) {
+            if ('' === $trace->serial) {
+                continue;
+            }
+            $registration = $this->currentQuery(ProductSerial::class, ['product' => $product, 'serialNumber' => $trace->serial])->setHint(\Doctrine\ORM\Query::HINT_REFRESH, true)->getOneOrNullResult();
+            if ($registration && in_array($registration->status, ['reserved', 'damaged'], true)) {
+                ++$quantity;
             }
         }
 
