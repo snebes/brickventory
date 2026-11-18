@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -eu
+cd "$(dirname "$0")/.."
+exec php bin/console messenger:consume inventory_imports --time-limit=3600 --memory-limit=256M --keepalive=30 "$@"
