@@ -22,6 +22,10 @@ export default defineNuxtConfig({
     app: {
         head: {
             title: 'Brickventory',
+            link: [
+                { rel: 'icon', type: 'image/png', href: '/branding/brickventory-logo.png' },
+                { rel: 'icon', type: 'image/svg+xml', sizes: 'any', href: '/favicon.svg' },
+            ],
             meta: [
                 { charset: 'utf-8' },
                 { name: 'viewport', content: 'width=device-width, initial-scale=1' },

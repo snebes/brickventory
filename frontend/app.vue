@@ -42,7 +42,15 @@ async function logout() {
         <a class="skip-link" href="#main-content">Skip to content</a>
         <aside class="sidebar" :class="{ open: menuOpen }">
             <NuxtLink class="brand" to="/"
-                >◈ <span>Brickventory<small>Inventory workspace</small></span></NuxtLink
+                ><img
+                    class="brand-logo"
+                    src="/branding/brickventory-logo.png"
+                    width="46"
+                    height="40"
+                    alt=""
+                    aria-hidden="true"
+                />
+                <span>Brickventory<small>Inventory workspace</small></span></NuxtLink
             >
             <nav aria-label="Workspace">
                 <NuxtLink to="/" :aria-current="route.path === '/' ? 'page' : undefined">Dashboard</NuxtLink>

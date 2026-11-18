@@ -162,12 +162,12 @@ watch(activeReport, (newReport) => {
 }
 
 .report-card h3 {
-  color: #2c3e50;
+  color: hsl(var(--text-primary));
   margin-bottom: 10px;
 }
 
 .report-card p {
-  color: #7f8c8d;
+  color: hsl(var(--text-tertiary));
   font-size: 0.9rem;
   margin-bottom: 20px;
 }
@@ -190,7 +190,7 @@ watch(activeReport, (newReport) => {
 }
 
 .report-header h3 {
-  color: #2c3e50;
+  color: hsl(var(--text-primary));
   margin: 0;
 }
 
@@ -198,7 +198,7 @@ watch(activeReport, (newReport) => {
   display: flex;
   gap: 40px;
   padding: 20px;
-  background: #f8f9fa;
+  background: hsl(var(--surface-overlay));
   border-radius: 8px;
   margin-bottom: 20px;
 }
@@ -211,13 +211,13 @@ watch(activeReport, (newReport) => {
   display: block;
   font-size: 2rem;
   font-weight: 700;
-  color: #e74c3c;
+  color: hsl(var(--status-danger));
 }
 
 .summary-label {
   display: block;
   font-size: 0.85rem;
-  color: #7f8c8d;
+  color: hsl(var(--text-tertiary));
   margin-top: 5px;
 }
 
@@ -226,21 +226,21 @@ watch(activeReport, (newReport) => {
 }
 
 .backordered-qty {
-  color: #e74c3c;
+  color: hsl(var(--status-danger));
   font-weight: 600;
 }
 
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #27ae60;
+  color: hsl(var(--status-success));
   font-size: 1.1rem;
 }
 
 .report-footer {
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #ecf0f1;
+  border-top: 1px solid hsl(var(--border-subtle));
   display: flex;
   justify-content: flex-end;
 }
@@ -248,13 +248,13 @@ watch(activeReport, (newReport) => {
 .loading-state {
   text-align: center;
   padding: 40px;
-  color: #7f8c8d;
+  color: hsl(var(--text-tertiary));
 }
 
 .error-state {
   text-align: center;
   padding: 40px;
-  color: #e74c3c;
+  color: hsl(var(--status-danger));
 }
 
 .error-state .btn {

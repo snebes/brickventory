@@ -131,7 +131,29 @@ useHead({ title: 'Dashboard · Brickventory' })
                     :key="card.key"
                     :to="card.to"
                     class="panel stat-card"
+                    :data-tone="card.key"
                     :data-testid="`dashboard-metric-${card.key}`"
+                    ><span class="metric-symbol" aria-hidden="true"
+                        ><svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <template v-if="card.key === 'products'">
+                                <path d="m12 3 9 5-9 5-9-5 9-5Z M3 8v9l9 5 9-5V8 M12 13v9 M7.5 5.5l9 5" />
+                            </template>
+                            <template v-else-if="card.key === 'value'">
+                                <rect x="3" y="5" width="18" height="15" rx="3" />
+                                <path d="M3 9h18 M16 14h5 M7 5V3" />
+                            </template>
+                            <template v-else-if="card.key === 'pending'">
+                                <circle cx="12" cy="12" r="9" />
+                                <path d="M12 7v5l3 2" />
+                            </template>
+                            <template v-else><path d="m3 17 6-6 4 4 8-10 M15 5h6v6" /></template></svg></span
                     ><small>{{ card.title }}</small
                     ><strong>{{ card.value }}</strong
                     ><span class="muted">{{ card.context }}</span

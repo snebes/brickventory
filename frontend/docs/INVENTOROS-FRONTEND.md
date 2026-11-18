@@ -8,8 +8,11 @@ EmptyState patterns, the money helpers, and the original design tokens at commit
 The frontend uses the existing Nuxt/Vue architecture. Inertia navigation/form submissions,
 Laravel route helpers, organization permissions and server-rendered page props are replaced
 by Nuxt file routes, the existing Symfony REST contract, and the shared-token session.
-Semantic color tokens are retained verbatim; the page shell, tables, empty states, status
-badges, forms and action dialogs are adapted into local Vue components and CSS.
+Semantic color roles are retained; their values now use the Brickventory palette.
+The page shell, tables, empty states, status badges, forms and action dialogs are
+adapted into local Vue components and CSS. The theme uses very light gray canvas
+and sidebar surfaces, white rounded widgets, neutral high-contrast text, and navy,
+turquoise and yellow accents with limited pink highlights.
 
 The authoritative backend contract is documented in
 [INVENTOROS-PORT.md](../../backend/docs/INVENTOROS-PORT.md). UI requests use its snake-case

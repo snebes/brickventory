@@ -23,7 +23,7 @@ body {
     margin: 0;
 }
 a {
-    color: hsl(var(--accent));
+    color: hsl(var(--text-primary));
     text-decoration: none;
 }
 a:hover {
@@ -44,7 +44,7 @@ button,
     min-height: 36px;
     padding: 7px 12px;
     border: 1px solid hsl(var(--border-subtle));
-    border-radius: 6px;
+    border-radius: 10px;
     background: hsl(var(--surface-raised));
     color: hsl(var(--text-primary));
     font-weight: 550;
@@ -62,13 +62,13 @@ button:disabled {
     cursor: wait;
 }
 .primary {
-    background: hsl(var(--accent));
-    color: white;
+    background: hsl(var(--accent-fill));
+    color: hsl(var(--accent-foreground));
     border-color: hsl(var(--accent));
 }
 .primary:hover {
-    background: hsl(var(--accent-hover));
-    color: white;
+    background: hsl(var(--accent-hover-fill));
+    color: hsl(var(--accent-hover-foreground));
 }
 .subtle {
     background: transparent;
@@ -85,8 +85,8 @@ textarea {
     padding: 8px 10px;
     background: hsl(var(--surface-raised));
     color: hsl(var(--text-primary));
-    border: 1px solid hsl(var(--border-subtle));
-    border-radius: 6px;
+    border: 1px solid hsl(var(--control-border));
+    border-radius: 10px;
 }
 input[type='checkbox'] {
     width: 17px;
@@ -103,7 +103,7 @@ textarea:disabled {
     background: hsl(var(--surface-overlay));
 }
 :focus-visible {
-    outline: 3px solid hsl(var(--ring) / 0.5);
+    outline: 3px solid hsl(var(--ring));
     outline-offset: 3px;
 }
 h1,
@@ -144,7 +144,7 @@ small {
     inset: 0 auto 0 0;
     width: 236px;
     background: hsl(var(--surface-base));
-    border-right: 1px solid hsl(var(--border-subtle));
+    border-right: 1px solid hsl(var(--text-primary) / 0.08);
     padding: 24px 14px 14px;
     display: flex;
     flex-direction: column;
@@ -178,7 +178,7 @@ small {
 }
 .sidebar nav a {
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: 10px;
     color: hsl(var(--text-secondary));
     font-size: 13px;
     font-weight: 500;
@@ -188,8 +188,11 @@ small {
     text-decoration: none;
 }
 .sidebar nav a[aria-current='page'] {
-    color: hsl(var(--accent));
-    background: hsl(var(--accent-soft));
+    color: hsl(var(--text-primary));
+    background: hsl(var(--status-info-soft));
+    box-shadow:
+        inset 3px 0 hsl(var(--accent)),
+        var(--ds-shadow-sm);
     font-weight: 650;
 }
 .sidebar-footer {
@@ -258,7 +261,7 @@ main {
 .panel {
     background: hsl(var(--surface-raised));
     border: 1px solid hsl(var(--border-subtle));
-    border-radius: 9px;
+    border-radius: 18px;
     box-shadow: var(--ds-shadow-sm);
     min-width: 0;
 }
@@ -293,7 +296,7 @@ main {
     padding: 4px 8px;
     background: hsl(var(--surface-overlay));
     color: hsl(var(--text-secondary));
-    border-radius: 6px;
+    border-radius: 10px;
     vertical-align: middle;
     margin-left: 6px;
     letter-spacing: 0;
@@ -314,7 +317,7 @@ th {
     color: hsl(var(--text-tertiary));
     padding: 11px 16px;
     border-bottom: 1px solid hsl(var(--border-subtle));
-    background: hsl(var(--surface-base));
+    background: hsl(var(--surface-overlay));
 }
 td {
     padding: 13px 16px;
@@ -325,7 +328,7 @@ tbody tr:last-child td {
     border-bottom: 0;
 }
 tbody tr:hover {
-    background: hsl(var(--surface-canvas));
+    background: hsl(var(--accent-soft));
 }
 .record-link {
     font-weight: 600;
@@ -345,7 +348,7 @@ tbody tr:hover {
 .badge {
     display: inline-block;
     padding: 2px 7px;
-    border-radius: 5px;
+    border-radius: 999px;
     border: 1px solid hsl(var(--border-subtle));
     background: hsl(var(--surface-overlay));
     font-size: 11px;
@@ -406,7 +409,7 @@ tbody tr:hover {
     padding: 14px 16px;
     background: hsl(var(--status-danger-soft));
     color: hsl(var(--status-danger));
-    border-radius: 6px;
+    border-radius: 10px;
     margin: 16px 0;
     overflow-wrap: anywhere;
 }
@@ -479,7 +482,7 @@ label {
 .line-card {
     padding: 18px;
     border: 1px solid hsl(var(--border-subtle));
-    border-radius: 6px;
+    border-radius: 10px;
     margin: 0 0 16px;
     min-width: 0;
 }
@@ -582,7 +585,7 @@ summary {
     max-height: 85vh;
     overflow: auto;
     border: 1px solid hsl(var(--border-subtle));
-    border-radius: 10px;
+    border-radius: 18px;
     padding: 24px;
     background: hsl(var(--surface-raised));
     color: hsl(var(--text-primary));
@@ -804,7 +807,7 @@ pre {
 .dashboard-replenishment {
     padding: 24px;
     margin-bottom: 20px;
-    border-top: 3px solid hsl(var(--status-warning));
+    border-top: 3px solid var(--brand-yellow);
 }
 .dashboard-stock-list {
     display: grid;
@@ -815,7 +818,7 @@ pre {
     min-width: 0;
     padding: 18px;
     border: 1px solid hsl(var(--border-subtle));
-    border-radius: 6px;
+    border-radius: 10px;
 }
 .dashboard-stock-card .eyebrow {
     margin-bottom: 5px !important;
@@ -867,7 +870,7 @@ pre {
 }
 .dashboard-ruler-gap {
     fill: none;
-    stroke: hsl(var(--border-strong));
+    stroke: hsl(var(--control-border));
     stroke-width: 2;
     stroke-dasharray: 2 4;
 }
@@ -956,7 +959,8 @@ pre {
 .dashboard-category-track span {
     display: block;
     height: 100%;
-    background: hsl(var(--accent));
+    background: var(--brand-turquoise);
+    border: 1px solid hsl(var(--accent));
     border-radius: 4px;
 }
 .dashboard-movement-chart {
@@ -988,10 +992,12 @@ pre {
     border-radius: 3px 3px 0 0;
 }
 .dashboard-bar-in {
-    background: hsl(var(--accent));
+    background: var(--brand-turquoise);
+    border: 1px solid hsl(var(--accent));
 }
 .dashboard-bar-out {
-    background: hsl(var(--status-warning));
+    background: var(--brand-yellow);
+    border: 1px solid hsl(var(--status-warning));
 }
 .dashboard-chart-legend {
     display: flex;
@@ -1083,7 +1089,7 @@ pre {
     padding: 20px;
     border: 1px solid hsl(var(--border-subtle));
     border-radius: 7px;
-    background: hsl(var(--surface-canvas));
+    background: hsl(var(--surface-overlay));
 }
 .catalog-form fieldset {
     border: 0;
@@ -1091,4 +1097,202 @@ pre {
     margin-left: 0;
     margin-right: 0;
     min-width: 0;
+}
+
+/* Rounded widgets sit on the gray workspace canvas. */
+.sidebar .brand,
+.sidebar nav a,
+.sidebar-footer small {
+    color: hsl(var(--text-primary));
+}
+.sidebar nav a:hover {
+    background: hsl(var(--surface-raised) / 0.45);
+}
+.sidebar .brand small {
+    color: hsl(var(--text-primary) / 0.85);
+}
+.sidebar .brand {
+    gap: 8px;
+    padding-inline: 6px;
+    font-size: 19px;
+}
+.brand-logo {
+    display: block;
+    width: 46px;
+    height: 40px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+.login-card .brand-logo {
+    width: 64px;
+    height: 56px;
+}
+
+.topbar {
+    height: 70px;
+    background: hsl(var(--surface-raised) / 0.9);
+}
+.topbar .workspace-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.workspace-indicator select {
+    width: auto;
+    max-width: 220px;
+    min-height: 34px;
+    font-size: 12px;
+}
+.page-header {
+    border-bottom-color: hsl(var(--text-primary) / 0.14);
+}
+.page-header h1 {
+    font-size: 29px;
+    font-weight: 700;
+}
+.page-header p,
+.inventory-dashboard .dashboard-freshness,
+.back-link {
+    color: hsl(var(--text-primary));
+}
+.panel {
+    box-shadow: var(--ds-shadow-md);
+}
+.panel .table-viewport:first-child th:first-child {
+    border-top-left-radius: 18px;
+}
+.panel .table-viewport:first-child th:last-child {
+    border-top-right-radius: 18px;
+}
+.filters {
+    border-radius: 18px 18px 0 0;
+}
+.dashboard-headlines .stat-card {
+    position: relative;
+    padding: 24px;
+    padding-right: 62px;
+    min-height: 170px;
+    border: 1px solid hsl(var(--border-subtle));
+    border-bottom: 3px solid var(--widget-color, var(--brand-turquoise));
+}
+.stat-card[data-tone='products'] {
+    --widget-color: var(--brand-turquoise);
+    --widget-soft: hsl(var(--accent-soft));
+    --widget-ink: hsl(var(--accent));
+}
+.stat-card[data-tone='value'] {
+    --widget-color: var(--brand-blue);
+    --widget-soft: hsl(var(--status-info-soft));
+    --widget-ink: hsl(var(--status-info));
+}
+.stat-card[data-tone='pending'] {
+    --widget-color: var(--brand-yellow);
+    --widget-soft: hsl(var(--highlight-soft));
+    --widget-ink: hsl(var(--status-warning));
+}
+.stat-card[data-tone='revenue'] {
+    --widget-color: var(--brand-pink);
+    --widget-soft: hsl(var(--pink-soft));
+    --widget-ink: hsl(var(--text-primary));
+}
+.metric-symbol {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    right: 18px;
+    top: 20px;
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    background: var(--widget-soft);
+    color: var(--widget-ink);
+}
+.metric-symbol svg {
+    width: 20px;
+    height: 20px;
+}
+.stat-card strong {
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(23px, 2vw, 30px);
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+.dashboard-stock-card {
+    background: hsl(var(--highlight-soft) / 0.55);
+    border-color: hsl(var(--highlight) / 0.3);
+    border-radius: 14px;
+}
+.dashboard-finances .panel {
+    border-radius: 16px;
+}
+.dashboard-finances strong {
+    color: hsl(var(--text-primary));
+    font-variant-numeric: tabular-nums;
+}
+.dashboard-movement-chart {
+    border-bottom: 1px solid hsl(var(--border-subtle));
+    background: repeating-linear-gradient(
+        to top,
+        transparent 0,
+        transparent 44px,
+        hsl(var(--border-subtle) / 0.45) 44px,
+        hsl(var(--border-subtle) / 0.45) 45px
+    );
+}
+.dashboard-day-bars span {
+    border-radius: 7px 7px 0 0;
+}
+.login-card {
+    border-radius: 22px;
+    box-shadow: var(--ds-shadow-lg);
+    border-top: 4px solid var(--brand-turquoise);
+}
+progress {
+    accent-color: var(--brand-turquoise);
+    width: min(100%, 420px);
+    height: 10px;
+    border: 1px solid hsl(var(--control-border));
+    border-radius: 999px;
+    overflow: hidden;
+    background: hsl(var(--surface-overlay));
+}
+progress::-webkit-progress-bar {
+    background: hsl(var(--surface-overlay));
+}
+progress::-webkit-progress-value {
+    background: var(--brand-turquoise);
+    box-shadow: inset 0 0 0 1px hsl(var(--accent));
+    border-radius: 999px;
+}
+progress::-moz-progress-bar {
+    background: var(--brand-turquoise);
+    box-shadow: inset 0 0 0 1px hsl(var(--accent));
+    border-radius: 999px;
+}
+@media (max-width: 760px) {
+    .sidebar {
+        top: 70px;
+    }
+    .topbar .workspace-indicator {
+        display: none;
+    }
+    .page-header h1 {
+        font-size: 25px;
+    }
+    .dashboard-headlines .stat-card {
+        padding: 18px;
+        padding-top: 60px;
+        min-height: 175px;
+    }
+    .metric-symbol {
+        top: 15px;
+        left: 18px;
+        right: auto;
+    }
+}
+input::placeholder,
+textarea::placeholder {
+    color: hsl(var(--text-tertiary));
+    opacity: 1;
 }
