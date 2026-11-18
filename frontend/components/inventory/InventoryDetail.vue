@@ -5,6 +5,7 @@ import InventoryBadge from './InventoryBadge.vue'
 import InventoryAction from './InventoryAction.vue'
 import InventoryAttachments from './InventoryAttachments.vue'
 import InventorySupplierCatalog from './InventorySupplierCatalog.vue'
+import PurchaseOrderItems from './PurchaseOrderItems.vue'
 const props = defineProps<{ resource: string; id: string }>()
 const config = inventoryResources[props.resource]!,
     api = useInventoryApi()
@@ -192,7 +193,8 @@ async function remove() {
             </section>
             <section v-if="record.items?.length" class="panel detail-section">
                 <h2>Line items</h2>
-                <div class="table-viewport">
+                <PurchaseOrderItems v-if="resource === 'purchase-orders'" :items="record.items" />
+                <div v-else class="table-viewport">
                     <table>
                         <thead>
                             <tr>

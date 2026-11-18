@@ -93,7 +93,6 @@ useHead({ title: 'Dashboard · Brickventory' })
     <div class="inventory-dashboard">
         <header class="page-header">
             <div>
-                <p class="eyebrow">Workspace overview</p>
                 <h1>Dashboard</h1>
                 <p>Your inventory, sales and purchasing at a glance.</p>
             </div>
@@ -162,6 +161,90 @@ useHead({ title: 'Dashboard · Brickventory' })
                     ></NuxtLink
                 >
             </section>
+            <div v-if="visible('stock_movements') || visible('stock_by_category')" class="dashboard-grid dashboard-insights">
+                <section v-if="visible('stock_movements')" class="panel dashboard-movements">
+                    <header class="section-header">
+                        <h2>Stock movements</h2>
+                        <NuxtLink to="/stock-movements">View ledger →</NuxtLink>
+                    </header>
+                    <p>Last 7 days · units in and out</p>
+                    <div
+                        class="dashboard-movement-chart"
+                        role="img"
+                        aria-label="Inbound and outbound stock units for the last seven days"
+                    >
+                        <div
+                            v-for="day in data.stockMovements"
+                            :key="day.date"
+                            class="dashboard-day"
+                            :aria-label="`${day.date}: ${day.inbound} inbound, ${day.outbound} outbound`"
+                        >
+                            <div class="dashboard-day-bars">
+                                <span
+                                    class="dashboard-bar-in"
+                                    :style="{ height: `${(day.inbound / movementScale) * 100}%` }"
+                                    :title="`${day.inbound} inbound`"
+                                /><span
+                                    class="dashboard-bar-out"
+                                    :style="{ height: `${(day.outbound / movementScale) * 100}%` }"
+                                    :title="`${day.outbound} outbound`"
+                                />
+                            </div>
+                            <small>{{ day.date.slice(5) }}</small>
+                        </div>
+                    </div>
+                    <div class="dashboard-chart-legend"><span>● Inbound</span><span>● Outbound</span></div>
+                    <details>
+                        <summary>View movement data</summary>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Inbound</th>
+                                    <th>Outbound</th>
+                                    <th>Net</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="day in data.stockMovements" :key="day.date">
+                                    <td>{{ day.date }}</td>
+                                    <td>{{ day.inbound }}</td>
+                                    <td>{{ day.outbound }}</td>
+                                    <td>{{ day.total }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </details>
+                </section>
+                <section v-if="visible('stock_by_category')" class="panel">
+                    <header class="section-header">
+                        <h2>Stock by category</h2>
+                        <span class="muted">At selling price · {{ data.currency }}</span>
+                    </header>
+                    <div
+                        v-for="category in categories"
+                        :key="category.id ?? 'uncategorized'"
+                        class="dashboard-category"
+                    >
+                        <div>
+                            <NuxtLink :to="category.id ? `/products?category_id=${category.id}` : '/products'">{{
+                                category.name
+                            }}</NuxtLink><strong>{{ money(category.value, data.currency) }}</strong>
+                        </div>
+                        <div
+                            class="dashboard-category-track"
+                            role="img"
+                            :aria-label="`${categoryShare(category.value).toFixed(1)} percent of inventory value`"
+                        >
+                            <span :style="{ width: `${categoryShare(category.value)}%` }" />
+                        </div>
+                        <small>{{ category.count }} products · {{ categoryShare(category.value).toFixed(1) }}%</small>
+                    </div>
+                    <p v-if="!categories.length" class="dashboard-empty">
+                        Category values will appear when you add products.
+                    </p>
+                </section>
+            </div>
             <section
                 v-if="visible('low_stock_alerts')"
                 class="panel dashboard-replenishment"
@@ -287,88 +370,6 @@ useHead({ title: 'Dashboard · Brickventory' })
                         ><InventoryBadge :value="order.status" /><span>{{ money(order.total, order.currency) }}</span>
                     </div>
                     <p v-if="!data.recentPurchaseOrders.length" class="dashboard-empty">No purchase orders yet.</p>
-                </section>
-                <section v-if="visible('stock_by_category')" class="panel">
-                    <header class="section-header">
-                        <h2>Stock by category</h2>
-                        <span class="muted">At selling price · {{ data.currency }}</span>
-                    </header>
-                    <div
-                        v-for="category in categories"
-                        :key="category.id ?? 'uncategorized'"
-                        class="dashboard-category"
-                    >
-                        <div>
-                            <NuxtLink :to="category.id ? `/products?category_id=${category.id}` : '/products'">{{
-                                category.name
-                            }}</NuxtLink><strong>{{ money(category.value, data.currency) }}</strong>
-                        </div>
-                        <div
-                            class="dashboard-category-track"
-                            role="img"
-                            :aria-label="`${categoryShare(category.value).toFixed(1)} percent of inventory value`"
-                        >
-                            <span :style="{ width: `${categoryShare(category.value)}%` }" />
-                        </div>
-                        <small>{{ category.count }} products · {{ categoryShare(category.value).toFixed(1) }}%</small>
-                    </div>
-                    <p v-if="!categories.length" class="dashboard-empty">
-                        Category values will appear when you add products.
-                    </p>
-                </section>
-                <section v-if="visible('stock_movements')" class="panel">
-                    <header class="section-header">
-                        <h2>Stock movements</h2>
-                        <NuxtLink to="/stock-movements">View ledger →</NuxtLink>
-                    </header>
-                    <p>Last 7 days · units in and out</p>
-                    <div
-                        class="dashboard-movement-chart"
-                        role="img"
-                        aria-label="Inbound and outbound stock units for the last seven days"
-                    >
-                        <div
-                            v-for="day in data.stockMovements"
-                            :key="day.date"
-                            class="dashboard-day"
-                            :aria-label="`${day.date}: ${day.inbound} inbound, ${day.outbound} outbound`"
-                        >
-                            <div class="dashboard-day-bars">
-                                <span
-                                    class="dashboard-bar-in"
-                                    :style="{ height: `${(day.inbound / movementScale) * 100}%` }"
-                                    :title="`${day.inbound} inbound`"
-                                /><span
-                                    class="dashboard-bar-out"
-                                    :style="{ height: `${(day.outbound / movementScale) * 100}%` }"
-                                    :title="`${day.outbound} outbound`"
-                                />
-                            </div>
-                            <small>{{ day.date.slice(5) }}</small>
-                        </div>
-                    </div>
-                    <div class="dashboard-chart-legend"><span>● Inbound</span><span>● Outbound</span></div>
-                    <details>
-                        <summary>View movement data</summary>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Inbound</th>
-                                    <th>Outbound</th>
-                                    <th>Net</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="day in data.stockMovements" :key="day.date">
-                                    <td>{{ day.date }}</td>
-                                    <td>{{ day.inbound }}</td>
-                                    <td>{{ day.outbound }}</td>
-                                    <td>{{ day.total }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </details>
                 </section>
                 <section v-if="visible('reorder_suggestions')" class="panel">
                     <header class="section-header">

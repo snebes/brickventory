@@ -98,7 +98,6 @@ function clear() {
     <div>
         <header class="page-header">
             <div>
-                <p class="eyebrow">Workspace</p>
                 <h1>
                     {{ config.title }} <span v-if="data" class="record-count">{{ data.meta.total }}</span>
                 </h1>
