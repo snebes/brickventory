@@ -9,10 +9,20 @@ framework:
                 retry_strategy:
                     max_retries: 3
                     multiplier: 2
+            inventory_imports:
+                dsn: 'doctrine://default?queue_name=inventory_imports&auto_setup=0'
+                options:
+                    redeliver_timeout: 3600
+                retry_strategy:
+                    max_retries: 3
+                    delay: 30000
+                    multiplier: 4
+                    max_delay: 300000
             failed: 'doctrine://default?queue_name=failed'
             # sync: 'sync://'
 
         routing:
+            App\Message\ProcessProductImport: inventory_imports
             Symfony\Component\Mailer\Messenger\SendEmailMessage: async
             Symfony\Component\Notifier\Message\ChatMessage: async
             Symfony\Component\Notifier\Message\SmsMessage: async
@@ -22,4 +32,5 @@ when@test:
         messenger:
             transports:
                 async: 'in-memory://'
+                inventory_imports: '%env(INVENTORY_IMPORT_TEST_TRANSPORT_DSN)%'
                 failed: 'in-memory://'

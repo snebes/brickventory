@@ -22,12 +22,134 @@ final class InventoryApiTest extends WebTestCase
         $_ENV['INVENTORY_MAIL_FROM'] = $_SERVER['INVENTORY_MAIL_FROM'] = 'inventory@example.com';
         putenv('INVENTORY_CURRENCY=USD');
         $_ENV['INVENTORY_CURRENCY'] = $_SERVER['INVENTORY_CURRENCY'] = 'USD';
+        $_ENV['INVENTORY_IMPORT_DIRECTORY'] = $_SERVER['INVENTORY_IMPORT_DIRECTORY'] = sys_get_temp_dir().'/brickventory-import-test-'.bin2hex(random_bytes(6));
+        putenv('INVENTORY_IMPORT_DIRECTORY='.$_ENV['INVENTORY_IMPORT_DIRECTORY']);
         $this->client = self::createClient([], ['HTTP_AUTHORIZATION' => 'Bearer inventory-functional-test-token']);
         $this->client->disableReboot();
         $em = self::getContainer()->get('doctrine')->getManager();
         $metadata = array_values(array_filter($em->getMetadataFactory()->getAllMetadata(), fn ($m) => str_starts_with($m->name, 'App\\Entity\\Inventory\\')));
         $em->getConfiguration()->setUseSchemaEditorApi(true);
         (new SchemaTool($em))->createSchema($metadata);
+    }
+
+    protected function tearDown(): void
+    {
+        $directory = $_ENV['INVENTORY_IMPORT_DIRECTORY'] ?? '';
+        if (str_starts_with($directory, sys_get_temp_dir().'/brickventory-import-test-')) {
+            foreach (glob($directory.'/*.csv') ?: [] as $path) {
+                unlink($path);
+            }
+            if (is_dir($directory)) {
+                rmdir($directory);
+            }
+        }
+        parent::tearDown();
+    }
+
+    private function queueImport(string $csv): array
+    {
+        $file = tempnam(sys_get_temp_dir(), 'import-upload-');
+        file_put_contents($file, $csv);
+        $upload = new \Symfony\Component\HttpFoundation\File\UploadedFile($file, 'products.csv', 'text/csv', null, true);
+        $this->client->request('POST', '/api/v1/product-imports', [], ['file' => $upload]);
+        self::assertResponseStatusCodeSame(202, $this->client->getResponse()->getContent());
+
+        return json_decode($this->client->getResponse()->getContent(), true)['data'];
+    }
+
+    public function testBackgroundImportQueuesThenCheckpointsAndIgnoresDuplicateDelivery(): void
+    {
+        $csv = "sku,name,price\n";
+        for ($i = 0; $i < 1001; ++$i) {
+            $csv .= "ASYNC-$i,Product $i,1.25\n";
+        }
+        $job = $this->queueImport($csv);
+        $id = $job['id'];
+        self::assertSame('queued', $job['status']);
+        self::assertSame(0, self::getContainer()->get('doctrine')->getManager()->getRepository(\App\Entity\Inventory\Product::class)->count([]));
+        $transport = self::getContainer()->get('messenger.transport.inventory_imports');
+        $handler = self::getContainer()->get(\App\MessageHandler\ProcessProductImportHandler::class);
+        $first = $transport->getSent()[0]->getMessage();
+        self::assertInstanceOf(\App\Message\ProcessProductImport::class, $first);
+        $handler($first);
+        self::assertSame(500, self::getContainer()->get(\App\Inventory\ProductImports::class)->get($id)->processed);
+        $handler($first);
+        self::assertSame(500, self::getContainer()->get(\App\Inventory\ProductImports::class)->get($id)->processed);
+        $handler($transport->getSent()[1]->getMessage());
+        $handler($transport->getSent()[2]->getMessage());
+        $result = $this->call('GET', "product-imports/$id")['data'];
+        self::assertSame('completed', $result['status']);
+        self::assertSame(1001, $result['processed']);
+        self::assertSame(100, $result['progress']);
+        self::assertSame(1001, $this->call('GET', 'products')['meta']['total']);
+    }
+
+    public function testBackgroundImportRollsBackBadBatchAndReportsTheRow(): void
+    {
+        $csv = "sku,name,price\n";
+        for ($i = 0; $i < 501; ++$i) {
+            $csv .= "GOOD-$i,Product $i,1.25\n";
+        }
+        $csv .= "BAD,Invalid,broken\n";
+        $id = $this->queueImport($csv)['id'];
+        $transport = self::getContainer()->get('messenger.transport.inventory_imports');
+        $handler = self::getContainer()->get(\App\MessageHandler\ProcessProductImportHandler::class);
+        $handler($transport->getSent()[0]->getMessage());
+        $handler($transport->getSent()[1]->getMessage());
+        $result = $this->call('GET', "product-imports/$id")['data'];
+        self::assertSame('failed', $result['status']);
+        self::assertSame(500, $result['processed']);
+        self::assertSame(503, $result['error']['row']);
+        self::assertSame(500, $this->call('GET', 'products')['meta']['total']);
+        $this->client->request('GET', "/api/v1/product-imports/$id/errors");
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('503', $this->client->getResponse()->getContent());
+    }
+
+    public function testBackgroundImportCancellationAndResume(): void
+    {
+        $id = $this->queueImport("sku,name\nRESUME,Resumed product\n")['id'];
+        $first = self::getContainer()->get('messenger.transport.inventory_imports')->getSent()[0]->getMessage();
+        $this->call('POST', "product-imports/$id/cancel");
+        self::getContainer()->get(\App\MessageHandler\ProcessProductImportHandler::class)($first);
+        self::assertSame(0, $this->call('GET', 'products')['meta']['total']);
+        $this->call('POST', "product-imports/$id/resume");
+        self::getContainer()->get(\App\MessageHandler\ProcessProductImportHandler::class)($first);
+        self::assertSame('completed', $this->call('GET', "product-imports/$id")['data']['status']);
+        $this->call('POST', "product-imports/$id/resume", [], 422);
+    }
+
+    public function testBackgroundImportRejectsMalformedHeadersAndMarksTransportFailures(): void
+    {
+        $id = $this->queueImport("sku,sku\nA,B\n")['id'];
+        $first = self::getContainer()->get('messenger.transport.inventory_imports')->getSent()[0]->getMessage();
+        self::getContainer()->get(\App\MessageHandler\ProcessProductImportHandler::class)($first);
+        self::assertSame('failed', $this->call('GET', "product-imports/$id")['data']['status']);
+        $job = $this->queueImport("sku,name\nRETRY,Retry product\n");
+        $imports = self::getContainer()->get(\App\Inventory\ProductImports::class);
+        $message = new \App\Message\ProcessProductImport($job['id']);
+        $imports->transportFailure($message, true);
+        self::assertSame('retrying', $this->call('GET', "product-imports/{$job['id']}")['data']['status']);
+        $imports->transportFailure($message, false);
+        self::assertSame('failed', $this->call('GET', "product-imports/{$job['id']}")['data']['status']);
+    }
+
+    public function testPruningRemovesOnlyOldTerminalImports(): void
+    {
+        $done = $this->queueImport("sku,name\nPRUNE,Pruned product\n")['id'];
+        $message = self::getContainer()->get('messenger.transport.inventory_imports')->getSent()[0]->getMessage();
+        self::getContainer()->get(\App\MessageHandler\ProcessProductImportHandler::class)($message);
+        $active = $this->queueImport("sku,name\nACTIVE,Active product\n")['id'];
+        $db = self::getContainer()->get('doctrine')->getConnection();
+        $db->executeStatement('UPDATE inv_product_import SET updated_at = ?', [(new \DateTimeImmutable('-8 days'))->format('Y-m-d H:i:s')]);
+        $app = new \Symfony\Bundle\FrameworkBundle\Console\Application(self::$kernel);
+        $tester = new \Symfony\Component\Console\Tester\CommandTester($app->find('inventory:imports:prune'));
+        self::assertSame(0, $tester->execute(['--days' => 7]));
+        self::assertStringContainsString('Pruned 1 import jobs.', $tester->getDisplay());
+        $this->call('GET', "product-imports/$done", [], 404);
+        self::assertSame('queued', $this->call('GET', "product-imports/$active")['data']['status']);
+        self::assertFileDoesNotExist(self::getContainer()->get(\App\Inventory\ProductImportStorage::class)->path($done));
+        self::assertFileExists(self::getContainer()->get(\App\Inventory\ProductImportStorage::class)->path($active));
     }
 
     private function call(string $method, string $path, array $body = [], int $expected = 200): array

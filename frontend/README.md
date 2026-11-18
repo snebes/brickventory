@@ -106,3 +106,9 @@ include duplication, warehouse levels and serial management. Recurring schedules
 at `/cycle-counts`; manual shipments and packing slips live at `/shipments`. Schedule
 `php bin/console inventory:run-cycle-counts --env=prod` hourly from `backend/` to run due
 counts automatically. See the port documentation for stock and review semantics.
+
+Product CSV uploads now run in the background. Start a separate worker from the
+backend directory with `bin/inventory-worker` (add `--env=prod` in production).
+The inventory tools page shows progress and supports cancellation/resume. The web
+and worker processes must share the private `INVENTORY_IMPORT_DIRECTORY` volume;
+see `backend/docs/INVENTOROS-PORT.md` for queue, upload-limit and pruning setup.

@@ -236,24 +236,31 @@ final class InventoryService
         return $this->view($product);
     }
 
-    public function importProducts(array $rows): array
+    public function importProducts(array $rows, bool $serialize = true): array
     {
         if (!$rows || !array_is_list($rows) || count($rows) > 255000) {
             $this->invalid('Import requires between 1 and 500 rows.');
         }
 
-        return $this->transaction(function () use ($rows) {
+        return $this->transaction(function () use ($rows, $serialize) {
             $result = [];
-            foreach ($rows as $row) {
+            foreach ($rows as $index => $row) {
                 if (!is_array($row)) {
                     $this->invalid('Invalid import row.');
                 }
-                $existing = isset($row['sku']) ? $this->em->getRepository(Product::class)->findOneBy(['sku' => $row['sku']]) : null;
-                if ($existing?->parent) {
-                    $this->invalid('Variant SKU cannot be imported as a product.');
+                try {
+                    $existing = isset($row['sku']) ? $this->em->getRepository(Product::class)->findOneBy(['sku' => $row['sku']]) : null;
+                    if ($existing?->parent) {
+                        $this->invalid('Variant SKU cannot be imported as a product.');
+                    }
+                    $record = $existing ? $this->update('products', $existing->id, $row) : $this->create('products', $row);
+                    $result[] = $serialize ? $this->view($record) : $record->id;
+                } catch (UnprocessableEntityHttpException|NotFoundHttpException|\Doctrine\DBAL\Exception\UniqueConstraintViolationException|\Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException $error) {
+                    if ($serialize) {
+                        throw $error;
+                    }
+                    throw new ProductImportRowException($index, $error instanceof UnprocessableEntityHttpException || $error instanceof NotFoundHttpException ? $error->getMessage() : 'Duplicate barcode/SKU or invalid referenced category.');
                 }
-                $record = $existing ? $this->update('products', $existing->id, $row) : $this->create('products', $row);
-                $result[] = $this->view($record);
             }
 
             return $result;

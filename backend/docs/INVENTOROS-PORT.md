@@ -415,3 +415,87 @@ was verified on isolated MariaDB with legacy records preserved and no schema dif
 versus sale and simultaneous due schedule runs. Database conflicts retry with a
 fresh Doctrine unit of work, while the original stock/product/schedule row locks
 preserve invariants.
+
+## Background product imports with Messenger
+
+Inventoros's queued product-import job is adapted to a dedicated Symfony Messenger
+`inventory_imports` transport. `POST /api/v1/product-imports` accepts multipart `file`
+(UTF-8 CSV, up to 100 MiB and 250,000 product rows), stores it privately and returns
+HTTP **202**, a UUID job and a `Location` status URL. The web process does not parse
+or import the catalog. Nuxt's API proxy streams the upload body to Symfony.
+
+`GET /product-imports` lists jobs (20 per page), `GET /product-imports/{uuid}` returns
+status, committed row count and byte progress. `POST .../{uuid}/cancel` cancels after
+any current batch; `POST .../{uuid}/resume` resumes failed/cancelled jobs from their
+checkpoint. `GET .../{uuid}/errors` downloads the first failing row/message as CSV.
+All routes use the existing shared-token security; no source-file download is exposed.
+
+Headers include `sku` (required), `name` (required for new products), `description`,
+`price`, `cost`, `barcode`, `min_stock`, `is_active`, `category_id`, `unit`, `tracking`,
+`reorder_point`, `reorder_quantity`, and `max_stock`. SKUs upsert root products; variant
+SKUs are rejected. Counts represent processed CSV rows, including updates, rather
+than newly created or distinct products. Stock is not imported through these fields.
+
+Each message carries only the job UUID and expected byte checkpoint. It reads at
+most 500 product rows, uses existing product validation and decimal rules, and commits
+products, checkpoint and continuation message in the **same Doctrine transaction**.
+The identity map is cleared after every message. Duplicate delivery of an old
+checkpoint is a no-op. Multiple workers lock the job row before processing.
+
+A bad row rolls back its whole batch and marks the job failed with a record number
+(header is row 1; multiline CSV fields belong to one logical record). Earlier batches
+remain committed. Correct the external conflict before resuming; upload a corrected
+CSV when the source itself needs changes. There is no file-wide atomic rollback.
+Transient infrastructure failures retry three times (30s, 120s, then 300s); exhausted
+messages go to the existing `failed` transport and the job shows a safe failure
+message. Detailed exceptions stay in worker logs. Resume from the UI is sufficient;
+if an operator also retries a failed Messenger message, the checkpoint guard still
+prevents duplicate processing.
+
+Run the worker as a separate process from the backend directory:
+
+```sh
+bin/inventory-worker --env=prod
+# Equivalent:
+php bin/console messenger:consume inventory_imports --env=prod \
+  --time-limit=3600 --memory-limit=256M --keepalive=30
+```
+
+The wrapper also works locally without `--env=prod`. A Supervisor example is in
+`deploy/supervisor/inventory-worker.conf`; adjust its paths and account. Supervisor
+restarts workers after the time/memory limit. Use `messenger:stop-workers` for graceful
+deploy restarts. An interrupted unacknowledged message becomes eligible for redelivery
+after the transport's 3600-second timeout; graceful restarts finish the current batch.
+The existing `async` transport still handles mail and notification jobs and may run
+in its own worker. Install no permanent host service implicitly.
+
+Run the application's migrations before accepting uploads: the pre-existing
+`messenger_messages` table is required (`auto_setup=0` avoids DDL inside a transaction).
+`Version20261118020000` adds only `inv_product_import`; rollback drops job/checkpoint
+metadata, so drain or cancel imports and retain needed reports before rolling it back.
+Migration up/down/up and schema comparison were checked on isolated MariaDB.
+
+`INVENTORY_IMPORT_DIRECTORY` defaults to `%kernel.project_dir%/var/inventory-imports`.
+The web and worker must share that persistent directory and database, with a common
+service account able to read its private files (directory 0700, files 0600). Do not
+place uploads under `public/`, or use ephemeral unshared container storage.
+`public/.user.ini` sets PHP uploads to 100M and POST size to 105M for PHP-FPM setups;
+ensure the web server/reverse proxy permits the corresponding body size, and apply
+these values in php.ini when the PHP runtime does not read `.user.ini`.
+
+Terminal job files/reports are retained until pruning. Schedule daily, for example:
+
+```sh
+php bin/console inventory:imports:prune --days=7 --env=prod
+```
+
+Queued/running/retrying jobs are never pruned. There is no always-running worker or
+pruning daemon installed by this code change; deployment should manage both.
+
+`tests/Inventory/check-large-import.php 100000` is an opt-in integration check using
+`INVENTORY_MYSQL_TEST_URL` against a dedicated migrated database ending in `_test`.
+It generates a CSV, proves enqueueing imports zero products, runs a separate real
+Doctrine Messenger consumer under a 256M memory limit, checks all products and tests
+redelivery. It leaves uniquely prefixed product fixtures in that dedicated test DB.
+Functional tests also cover bad-batch rollback, duplicate delivery, cancellation,
+resume, malformed headers and visible failure states.
